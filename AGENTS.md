@@ -71,7 +71,22 @@ Use clear Conventional Commit-style messages, such as:
 
 Each commit should represent one coherent change and leave the repository in a reasonable state.
 
-Prefer approximately one to three meaningful commits per productive session. Use more only when the work genuinely contains separate concerns.
+Commit every independently reviewable, meaningful unit after it is complete and validated. A
+productive session may contain any number of commits when the work genuinely contains that many
+separate units; do not combine unrelated work merely to keep the commit count low.
+
+Valid commit units include:
+
+- A focused user-facing behavior or workflow
+- A bug fix together with its regression coverage
+- A contained security, privacy, accessibility, or reliability improvement
+- Focused tests that close a documented coverage gap
+- A coherent refactor that leaves behavior intact and is independently reviewable
+- A documentation, CI, packaging, or configuration improvement with standalone value
+
+Keep implementation and the tests required to validate it together when they form one logical
+change. Do not split tightly coupled edits, manufacture work, or create commits solely to increase
+the contribution count.
 
 ### Files that must never be committed
 
