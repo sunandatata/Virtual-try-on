@@ -1,5 +1,13 @@
 # Project Status
 
+## Repository workflow and CI - 2026-09-27
+
+- Added root repository instructions for meaningful, reviewable commits; explicit staging; secret and large-file review; safe synchronization; and complete push reports.
+- Expanded ignore coverage for framework output, local caches, editor files, temporary media, local databases, uploads, and generated release artifacts while retaining `.env.example` and synthetic fixtures.
+- Added least-privilege GitHub Actions CI for pushes and pull requests to `main`. CI installs from the lockfile on the current Node.js LTS release, then checks formatting, linting, types, unit tests, and production builds for the shared package, backend, and extension.
+- Playwright remains a documented local/manual release check because native Chrome extension surfaces are not reliably testable on a standard headless CI runner.
+- Next milestone: configure and verify a real FASHN generation after the user stores an API key locally; never commit that credential.
+
 ## Final implementation — 2026-09-26
 
 All six implementation milestones are complete. The workspace began empty, so there was no earlier web application to migrate or remove. Git was initialized and the product was built extension-first as specified.
