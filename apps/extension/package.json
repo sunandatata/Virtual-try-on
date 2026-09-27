@@ -1,0 +1,46 @@
+{
+  "name": "@virtual-try-on/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "node scripts/build-assets.mjs && node scripts/generate-manifest.mjs",
+    "dev": "npm run assets && vite build --watch",
+    "build": "npm run assets && tsc --noEmit && vite build",
+    "package": "npm run build && node scripts/package.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@virtual-try-on/shared": "*",
+    "@vitejs/plugin-react": "^5.0.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@playwright/test": "^1.55.1",
+    "@tailwindcss/vite": "^4.1.13",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/chrome": "^0.1.2",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.14",
+    "@types/react-dom": "^19.1.9",
+    "archiver": "^7.0.1",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^6.0.0",
+    "fake-indexeddb": "^6.2.2",
+    "jsdom": "^27.0.0",
+    "sharp": "^0.35.4",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.1",
+    "vite": "^7.1.7",
+    "vitest": "^5.0.2"
+  }
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Garment picker visual harness</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 48px;
+        font-family: system-ui, sans-serif;
+        background: #faf7f2;
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 28px;
+      }
+      article {
+        padding: 18px;
+        border-radius: 18px;
+        background: white;
+      }
+      article img {
+        width: 100%;
+        aspect-ratio: 4 / 5;
+        object-fit: contain;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <img id="picker-dress" src="/fixture/dress.png" alt="Plum one-piece dress" />
+        <h1>Plum studio dress</h1>
+      </article>
+      <article>
+        <img src="/fixture/top.png" alt="Teal structured top" />
+        <h1>Teal structured top</h1>
+      </article>
+    </main>
+    <script type="module" src="/src/picker-harness.ts"></script>
+  </body>
+</html>

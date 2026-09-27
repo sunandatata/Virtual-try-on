@@ -1,0 +1,33 @@
+{
+  "name": "virtual-try-on",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently -n api,extension -c blue,magenta \"npm run dev:api\" \"npm run dev:extension\"",
+    "dev:api": "npm run dev -w @virtual-try-on/api",
+    "dev:extension": "npm run dev -w @virtual-try-on/extension",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "pretypecheck": "npm run build -w @virtual-try-on/shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "pretest": "npm run build -w @virtual-try-on/shared",
+    "test": "npm run test --workspaces --if-present",
+    "pretest:e2e": "npm run build",
+    "test:e2e": "npm run test:e2e -w @virtual-try-on/extension",
+    "build": "npm run build -w @virtual-try-on/shared && npm run build -w @virtual-try-on/api && npm run build -w @virtual-try-on/extension",
+    "package:extension": "npm run package -w @virtual-try-on/extension"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

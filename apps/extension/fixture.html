@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atelier Fixture Shop</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui;
+        color: #30262a;
+        background: #faf7f2;
+      }
+      header {
+        padding: 22px 6vw;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        border-bottom: 1px solid #ded5cc;
+      }
+      header img {
+        width: 20px;
+        height: 20px;
+      }
+      main {
+        padding: 45px 6vw;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 28px;
+      }
+      article {
+        background: white;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 10px 30px #38231912;
+      }
+      article img {
+        width: 100%;
+        aspect-ratio: 4/5;
+        object-fit: contain;
+      }
+      .avatar {
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img class="avatar" src="/icons/icon-32.png" alt="Atelier logo" /><strong
+        >Atelier Fixture Shop</strong
+      >
+    </header>
+    <main>
+      <p>This synthetic page is for testing Virtual Try-On; no third-party product data is used.</p>
+      <div class="grid">
+        <article>
+          <img id="dress-product" src="/fixture/dress.png" alt="Plum one-piece dress" />
+          <h2>Plum studio dress</h2>
+        </article>
+        <article>
+          <picture
+            ><source media="(min-width: 600px)" srcset="/fixture/top.png" />
+            <img id="responsive-product" src="/fixture/dress.png" alt="Responsive teal top"
+          /></picture>
+          <h2>Teal structured top</h2>
+        </article>
+        <article>
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720'%3E%3Crect width='720' height='720' fill='%23eee'/%3E%3Ctext x='360' y='360' text-anchor='middle'%3EProtected image fallback%3C/text%3E%3C/svg%3E"
+            alt="Simulated data URL garment requiring upload fallback"
+          />
+          <h2>Difficult image case</h2>
+        </article>
+      </div>
+      <img src="/icons/icon-16.png" width="16" height="16" alt="Tiny decorative icon" />
+    </main>
+    <script type="module" src="/src/content.ts"></script>
+  </body>
+</html>
