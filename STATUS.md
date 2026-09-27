@@ -1,5 +1,24 @@
 # Project Status
 
+## Contribution audit and API boundary coverage - 2026-09-27
+
+- Audited the clean, synchronized `main` history and confirmed the low contribution count came
+  from grouping the initial 83-file, 13,794-insertion implementation into one large commit. No
+  history was rewritten or backdated.
+- Replaced the suggested per-session commit count with a policy to commit every independently
+  reviewable, validated unit while keeping coupled implementation and tests together. Fake,
+  padded, or contribution-only commits remain prohibited.
+- Added direct upload-route coverage for the configured access code, unsupported MIME types,
+  oversized files, corrupt image bytes, and the per-client request limit.
+- Added signed status/result route coverage for malformed or wrong-purpose tokens, mock job state,
+  untrusted result hosts, and defensive FASHN CDN image proxy headers.
+- Full verification passed: formatting, linting, strict type-checking, production backend and
+  extension builds, 38 unit tests (API 23, extension 11, shared 4), and the Playwright extension
+  workflow (1 test).
+- Next milestone remains a real FASHN generation after the user supplies an API key locally, plus
+  the documented native Chrome release checks. Neither can be completed honestly without that
+  external credential/user interaction.
+
 ## Repository workflow and CI - 2026-09-27
 
 - Added root repository instructions for meaningful, reviewable commits; explicit staging; secret and large-file review; safe synchronization; and complete push reports.
