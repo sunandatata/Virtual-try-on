@@ -13,6 +13,9 @@ import { listCollections } from '../lib/collection-storage';
 import { createBodyProfile, setBodyProfileConsent } from '../lib/body-profile-storage';
 import { QueuePanel } from './QueuePanel';
 
+const inspectReadiness = vi.hoisted(() => vi.fn());
+vi.mock('../lib/readiness', () => ({ inspectImageReadiness: inspectReadiness }));
+
 function draft(overrides: Partial<CaptureDraft> = {}): CaptureDraft {
   return {
     id: 'draft-one',
@@ -63,6 +66,14 @@ describe('QueuePanel', () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
+    inspectReadiness.mockReset();
+    inspectReadiness.mockResolvedValue({
+      level: 'ready',
+      canContinue: true,
+      checks: [
+        { code: 'ready', severity: 'info', message: 'Images look usable.', blocking: false },
+      ],
+    });
   });
 
   afterEach(() => {
@@ -255,8 +266,9 @@ describe('QueuePanel', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Select Second Top for generation' }));
     await user.click(screen.getByRole('button', { name: 'Generate 2' }));
 
-    const dialog = screen.getByRole('dialog', { name: 'Start 2 generations?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Start 2 generations?' });
     expect(dialog).toHaveTextContent('request 2 provider credits');
+    expect(within(dialog).getAllByText('Ready')).toHaveLength(3);
     expect(sendMessage).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole('button', { name: 'Confirm 2' }));
 
@@ -267,5 +279,57 @@ describe('QueuePanel', () => {
         profileId: profile.id,
       }),
     );
+  });
+
+  it('explains replacement guidance and requires an explicit safe override', async () => {
+    const profile = await createBodyProfile({
+      profileName: 'Front',
+      image: {
+        blob: new Blob(['person'], { type: 'image/png' }),
+        imageName: 'person.png',
+        mime: 'image/png',
+        width: 800,
+        height: 1200,
+      },
+    });
+    await setBodyProfileConsent(profile.id, true);
+    await createQueueItem(queueInput());
+    inspectReadiness
+      .mockResolvedValueOnce({
+        level: 'ready',
+        canContinue: true,
+        checks: [
+          { code: 'ready', severity: 'info', message: 'Profile is usable.', blocking: false },
+        ],
+      })
+      .mockResolvedValueOnce({
+        level: 'replace-recommended',
+        canContinue: true,
+        checks: [
+          {
+            code: 'too-small',
+            severity: 'error',
+            message: 'This garment image is extremely small and should be replaced.',
+            blocking: false,
+          },
+        ],
+      });
+    const user = userEvent.setup();
+    render(<QueuePanel />);
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Queue Dress for generation' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Generate 1' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Start 1 generation?' });
+    expect(dialog).toHaveTextContent('Replace recommended');
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm 1' });
+    expect(confirm).toBeDisabled();
+    await user.click(
+      within(dialog).getByRole('checkbox', {
+        name: 'Continue despite the replacement recommendations',
+      }),
+    );
+    expect(confirm).toBeEnabled();
   });
 });

@@ -716,6 +716,50 @@ p {
   border-radius: 13px;
   background: #fff8f2;
 }
+.readiness-list {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0;
+}
+.readiness {
+  padding: 8px;
+  border: 1px solid #d8cbc3;
+  border-radius: 9px;
+  background: #fff;
+}
+.readiness > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.readiness > div span {
+  font-size: 11px;
+  font-weight: 900;
+}
+.readiness-ready > div span {
+  color: #28714c;
+}
+.readiness-may-work > div span {
+  color: #8b611e;
+}
+.readiness-replace-recommended > div span {
+  color: #9b463e;
+}
+.readiness ul {
+  padding-left: 18px;
+  margin: 6px 0 0;
+  color: #6d6063;
+  font-size: 11px;
+}
+.readiness-override {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 10px 0;
+  color: #594b50;
+  font-size: 12px;
+  font-weight: 800;
+}
 .batch-confirm h3 {
   margin: 0;
   font-family: Georgia, Cambria, serif;

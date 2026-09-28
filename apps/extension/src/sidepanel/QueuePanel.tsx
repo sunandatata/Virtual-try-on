@@ -15,6 +15,8 @@ import {
 import type { GarmentCollection } from '../lib/collection-storage';
 import { listBodyProfiles } from '../lib/body-profile-storage';
 import type { BodyProfile } from '../lib/body-profile-storage';
+import { inspectImageReadiness } from '../lib/readiness';
+import type { ImageReadiness } from '../lib/readiness';
 import {
   commitCaptureDraft,
   deleteCaptureDraft,
@@ -32,6 +34,13 @@ import type { CaptureDraft, QueueItem, QueueStatus } from '../lib/queue-storage'
 
 type QueueFilter = 'all' | QueueStatus;
 type CollectionFilter = 'all' | 'favorites' | string;
+type BatchReadiness = { id: string; label: string; result: ImageReadiness };
+
+const readinessLabels: Record<ImageReadiness['level'], string> = {
+  ready: 'Ready',
+  'may-work': 'May work',
+  'replace-recommended': 'Replace recommended',
+};
 
 function CollectionRow({
   collection,
@@ -345,6 +354,7 @@ function QueueCard({
   onSelect,
   onMove,
   selectionLimitReached,
+  selectionLocked,
   collections,
 }: {
   item: QueueItem;
@@ -355,6 +365,7 @@ function QueueCard({
   onSelect: (selected: boolean) => void;
   onMove: (delta: number) => void;
   selectionLimitReached: boolean;
+  selectionLocked: boolean;
   collections: GarmentCollection[];
 }) {
   const imageUrl = useAssetPreview(item.id);
@@ -386,7 +397,9 @@ function QueueCard({
             type="checkbox"
             checked={selected}
             disabled={
-              !['ready', 'failed'].includes(item.status) || (!selected && selectionLimitReached)
+              selectionLocked ||
+              !['ready', 'failed'].includes(item.status) ||
+              (!selected && selectionLimitReached)
             }
             onChange={(event) => onSelect(event.target.checked)}
             aria-label={`Select ${item.productName} for generation`}
@@ -563,6 +576,9 @@ export function QueuePanel({
   const [confirmBatch, setConfirmBatch] = useState(false);
   const [batchError, setBatchError] = useState('');
   const [startingBatch, setStartingBatch] = useState(false);
+  const [checkingReadiness, setCheckingReadiness] = useState(false);
+  const [readiness, setReadiness] = useState<BatchReadiness[]>([]);
+  const [readinessOverride, setReadinessOverride] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -669,6 +685,69 @@ export function QueuePanel({
     }
   };
 
+  const reviewBatchReadiness = async () => {
+    const profile = profiles.find((candidate) => candidate.id === profileId);
+    if (!profile) {
+      setBatchError('Create or choose a body profile before generating.');
+      return;
+    }
+    setCheckingReadiness(true);
+    setBatchError('');
+    try {
+      const personResult = await inspectImageReadiness({
+        role: 'person',
+        blob: profile.blob,
+        mime: profile.mime,
+        size: profile.blob.size,
+        width: profile.width,
+        height: profile.height,
+      });
+      const garmentResults = await Promise.all(
+        [...selected].map(async (itemId) => {
+          const item = items.find((candidate) => candidate.id === itemId);
+          const asset = await getQueueAssetByKind(itemId, 'garment');
+          const result = asset
+            ? await inspectImageReadiness({
+                role: 'garment',
+                blob: asset.blob,
+                mime: asset.mime,
+                size: asset.blob.size,
+                width: asset.width,
+                height: asset.height,
+              })
+            : {
+                level: 'replace-recommended' as const,
+                canContinue: false,
+                checks: [
+                  {
+                    code: 'missing-garment',
+                    severity: 'error' as const,
+                    message: 'The garment image is missing and cannot be submitted.',
+                    blocking: true,
+                  },
+                ],
+              };
+          return { id: itemId, label: item?.productName ?? 'Garment', result };
+        }),
+      );
+      setReadiness([
+        { id: profile.id, label: profile.profileName, result: personResult },
+        ...garmentResults,
+      ]);
+      setReadinessOverride(false);
+      setConfirmBatch(true);
+    } catch (reason) {
+      setBatchError(reason instanceof Error ? reason.message : 'Could not check these images.');
+    } finally {
+      setCheckingReadiness(false);
+    }
+  };
+
+  const readinessBlocked = readiness.some((entry) => !entry.result.canContinue);
+  const readinessNeedsOverride = readiness.some(
+    (entry) => entry.result.level === 'replace-recommended' && entry.result.canContinue,
+  );
+
   return (
     <div className="queue-panel">
       {draft && <DraftReview key={draft.id} draft={draft} onSaved={() => void load()} />}
@@ -772,15 +851,27 @@ export function QueuePanel({
               <strong>{selected.size} selected</strong>
               <span>{selected.size >= 5 ? 'Batch limit reached.' : 'Select up to 5.'}</span>
             </div>
-            <button className="button primary" onClick={() => setConfirmBatch(true)}>
-              Generate {selected.size}
+            <button
+              className="button primary"
+              disabled={checkingReadiness}
+              onClick={() => void reviewBatchReadiness()}
+            >
+              {checkingReadiness ? 'Checking…' : `Generate ${selected.size}`}
             </button>
           </div>
         )}
         {selected.size > 0 && !activeBatch && (
           <label className="queue-filter batch-profile-picker">
             Body profile
-            <select value={profileId} onChange={(event) => setProfileId(event.target.value)}>
+            <select
+              disabled={checkingReadiness}
+              value={profileId}
+              onChange={(event) => {
+                setProfileId(event.target.value);
+                setReadiness([]);
+                setConfirmBatch(false);
+              }}
+            >
               {profiles.length === 0 ? (
                 <option value="">Create a profile first</option>
               ) : (
@@ -804,10 +895,44 @@ export function QueuePanel({
               {selected.size === 1 ? 'credit' : 'credits'}. Jobs run sequentially using your saved
               body photo.
             </p>
+            <div className="readiness-list">
+              {readiness.map((entry) => (
+                <article key={entry.id} className={`readiness readiness-${entry.result.level}`}>
+                  <div>
+                    <strong>{entry.label}</strong>
+                    <span>{readinessLabels[entry.result.level]}</span>
+                  </div>
+                  <ul>
+                    {entry.result.checks.map((candidate) => (
+                      <li key={candidate.code}>{candidate.message}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+            {readinessNeedsOverride && !readinessBlocked && (
+              <label className="readiness-override">
+                <input
+                  type="checkbox"
+                  checked={readinessOverride}
+                  onChange={(event) => setReadinessOverride(event.target.checked)}
+                />
+                Continue despite the replacement recommendations
+              </label>
+            )}
+            {readinessBlocked && (
+              <p className="status error">
+                Replace the blocked image before using a provider credit.
+              </p>
+            )}
             <div className="button-row">
               <button
                 className="button primary"
-                disabled={startingBatch}
+                disabled={
+                  startingBatch ||
+                  readinessBlocked ||
+                  (readinessNeedsOverride && !readinessOverride)
+                }
                 onClick={() => void startBatch()}
               >
                 {startingBatch ? 'Starting…' : `Confirm ${selected.size}`}
@@ -866,16 +991,19 @@ export function QueuePanel({
                   position={position}
                   count={items.length}
                   onChanged={() => void load()}
-                  onSelect={(checked) =>
+                  onSelect={(checked) => {
+                    setReadiness([]);
+                    setConfirmBatch(false);
                     setSelected((current) => {
                       const next = new Set(current);
                       if (checked) next.add(item.id);
                       else next.delete(item.id);
                       return next;
-                    })
-                  }
+                    });
+                  }}
                   onMove={(delta) => void move(item.id, delta)}
                   selectionLimitReached={selected.size >= 5}
+                  selectionLocked={checkingReadiness}
                   collections={collections}
                 />
               );
