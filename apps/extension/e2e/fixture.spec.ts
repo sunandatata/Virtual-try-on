@@ -25,6 +25,7 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
     await panelHarness.emulateMedia({ reducedMotion: 'reduce' });
     await panelHarness.goto(`chrome-extension://${extensionId}/sidepanel.html`);
     await expect(panelHarness.getByRole('heading', { name: 'Virtual Try-On' })).toBeVisible();
+    await panelHarness.getByRole('button', { name: 'Try on' }).click();
     await expect(panelHarness.getByText('Add your body photo')).toBeVisible();
     await panelHarness.screenshot({ path: testInfo.outputPath('first-run.png'), fullPage: true });
 
@@ -46,10 +47,18 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
     await dress.hover();
     await expect(fixture.locator('[data-virtual-try-on-picker]')).toHaveCount(1);
     await fixture.screenshot({ path: testInfo.outputPath('picker.png'), fullPage: true });
-    await dress.click();
+    await fixture.keyboard.press('Escape');
     await expect(fixture.locator('[data-virtual-try-on-picker]')).toHaveCount(0);
 
     await panelHarness.bringToFront();
+    await panelHarness.getByRole('button', { name: 'Try on' }).click();
+    await panelHarness
+      .getByLabel('Upload garment screenshot')
+      .setInputFiles(resolve('public/fixture/dress.png'));
+    await expect(
+      panelHarness.getByRole('heading', { name: 'Confirm garment details' }),
+    ).toBeVisible();
+    await panelHarness.getByRole('button', { name: 'Try on' }).click();
     await expect(panelHarness.getByAltText('Upload garment screenshot preview')).toBeVisible();
     await panelHarness.screenshot({
       path: testInfo.outputPath('ready-with-garment.png'),
@@ -110,6 +119,7 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
       });
     });
     await panelHarness.reload();
+    await panelHarness.getByRole('button', { name: 'Try on' }).click();
     await expect(panelHarness.getByRole('button', { name: 'Retry' })).toBeVisible();
     await panelHarness.screenshot({ path: testInfo.outputPath('error.png'), fullPage: true });
 
@@ -119,6 +129,7 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
       });
     });
     await panelHarness.reload();
+    await panelHarness.getByRole('button', { name: 'Try on' }).click();
     await panelHarness.getByRole('button', { name: 'Start over' }).click();
     await expect(panelHarness.getByRole('heading', { name: 'Choose a garment' })).toBeVisible();
     await panelHarness
@@ -134,6 +145,7 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
     await settings.getByRole('button', { name: 'Clear all locally stored data' }).click();
     await expect(settings.getByText(/All locally stored images/)).toBeVisible();
     await panelHarness.reload();
+    await panelHarness.getByRole('button', { name: 'Try on' }).click();
     await expect(panelHarness.getByText('Add your body photo')).toBeVisible();
 
     const pickerHarness = await context.newPage();
