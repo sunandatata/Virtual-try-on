@@ -113,6 +113,14 @@ export type GenerationBatch = {
   updatedAt: number;
 };
 
+export type GarmentCollection = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 interface VirtualTryOnDatabase extends DBSchema {
   images: {
     key: ImageSlot;
@@ -154,10 +162,18 @@ interface VirtualTryOnDatabase extends DBSchema {
       'by-status': BatchStatus;
     };
   };
+  collections: {
+    key: string;
+    value: GarmentCollection;
+    indexes: {
+      'by-normalized-name': string;
+      'by-created-at': number;
+    };
+  };
 }
 
 export const DATABASE_NAME = 'virtual-try-on';
-export const DATABASE_VERSION = 3;
+export const DATABASE_VERSION = 4;
 
 let databasePromise: Promise<IDBPDatabase<VirtualTryOnDatabase>> | undefined;
 
@@ -189,6 +205,11 @@ export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
         const batches = database.createObjectStore('batches', { keyPath: 'id' });
         batches.createIndex('by-created-at', 'createdAt');
         batches.createIndex('by-status', 'status');
+      }
+      if (!database.objectStoreNames.contains('collections')) {
+        const collections = database.createObjectStore('collections', { keyPath: 'id' });
+        collections.createIndex('by-normalized-name', 'normalizedName', { unique: true });
+        collections.createIndex('by-created-at', 'createdAt');
       }
     },
     blocking() {

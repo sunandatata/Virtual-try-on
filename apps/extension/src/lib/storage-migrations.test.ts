@@ -57,7 +57,7 @@ describe('legacy IndexedDB migration', () => {
     const secondRun = await migrateLegacyGarmentToQueue();
     const items = await listQueueItems();
 
-    expect(DATABASE_VERSION).toBe(3);
+    expect(DATABASE_VERSION).toBe(4);
     expect(firstRun).toMatchObject({ status: 'migrated', queueItemId: items[0]?.id });
     expect(secondRun).toMatchObject({ status: 'already-migrated', queueItemId: items[0]?.id });
     expect(items).toHaveLength(1);
