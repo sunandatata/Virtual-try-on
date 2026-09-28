@@ -1,5 +1,13 @@
 # Project Status
 
+## Cross-store differentiation started - 2026-09-27
+
+- Repositioned the product around a universal local queue: collect garments from different stores, generate selected items with the same body profile, compare results, and return to original listings.
+- FASHN remains only the optional generation engine; retailer-neutral capture, metadata review, queueing, batch control, comparison, organization, profiles, readiness guidance, and privacy are extension-owned behavior.
+- Durable specification, roadmap, README, and privacy requirements now cover eight ordered milestones and keep outfit building, sharing, monitoring, alternatives, additional browsers, and mobile integration out of scope until the core is stable.
+- Locked product defaults: queue-first landing, review before save, warn-and-allow duplicate variants, five-item batch cap, per-profile consent, and optional collection templates.
+- Next milestone: implement the IndexedDB queue/assets/drafts repository and safe migration from the existing single garment/result slots.
+
 ## Contribution audit and API boundary coverage - 2026-09-27
 
 - Audited the clean, synchronized `main` history and confirmed the low contribution count came

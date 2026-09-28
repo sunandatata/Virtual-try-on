@@ -25,6 +25,10 @@ The garment picker is injected only after an explicit user action and removes it
 
 Users can replace or delete the body photo, remove a garment, start over, or clear all locally stored extension data from Settings. Uninstalling the extension also removes its local storage under Chrome's normal extension-data behavior.
 
+## Planned cross-store data behavior
+
+The product roadmap adds a local garment queue, explicitly captured product context, favorites, collections, comparisons, notes, job recovery, and multiple body profiles. These features must remain in extension IndexedDB, must not run without user action, and must not send page contents to the backend. This notice will be updated alongside each shipped milestone so it continues to describe verified behavior rather than planned behavior.
+
 ## Accuracy and sensitive data
 
 Results are visual approximations and do not guarantee sizing, measurements, fit, fabric behavior, or appearance. Users must upload only photos they own or have permission to process. Body images should be treated as sensitive personal data.

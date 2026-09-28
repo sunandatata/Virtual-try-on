@@ -1,6 +1,8 @@
 # Virtual Try-On
 
-Virtual Try-On is a privacy-conscious Chrome side-panel extension and serverless API for creating approximate clothing previews while shopping. The preferred body photo stays in extension IndexedDB; a person image and garment are transmitted only after the user explicitly presses **Generate try-on**. It does not provide sizing, measurements, fabric-drape analysis, or a fit guarantee.
+Virtual Try-On is a privacy-conscious Chrome side-panel extension for collecting clothing from different stores, generating approximate previews with the same saved body profile, and comparing results without leaving the shopping experience. Product context, queues, profiles, results, favorites, and collections stay in extension IndexedDB. A person image and garment are transmitted only after the user explicitly confirms generation.
+
+FASHN supplies the optional real image-generation engine. The product's differentiation is the universal shopping workflow around it: retailer-neutral capture, a persistent cross-store queue, controlled batch generation, local organization, and comparison linked back to original listings.
 
 ## Repository
 
@@ -119,3 +121,7 @@ Do not report these interactive checks as passed until performed in Chrome.
 - The mock result is a deterministic labeled illustration, not a clothing transformation.
 - No Amazon-specific scraper, accounts, billing, sizing, video, mobile integration, gallery, or non-Chromium support is included.
 - A future release can add rigorously tested visible-tab cropping, a hosted privacy page, telemetry-free health diagnostics, and broader automated native-side-panel coverage as Chromium tooling improves.
+
+## Cross-store roadmap
+
+Development proceeds through eight ordered milestones: persistent queue, explicit-action metadata extraction, queue interface, safe sequential batches, comparison, collections, multiple body profiles, and explainable input-readiness checks. Outfit building, sharing, price monitoring, alternative discovery, non-Chromium browsers, and mobile sharing remain later roadmap items.
