@@ -1,4 +1,5 @@
 import { extensionMessageSchema, MAX_IMAGE_BYTES } from '@virtual-try-on/shared';
+import type { ProductMetadata } from '@virtual-try-on/shared';
 import { saveImage } from './lib/storage';
 
 const MENU_ID = 'virtual-try-on-image';
@@ -23,7 +24,7 @@ async function openPanel(tab?: chrome.tabs.Tab) {
   if (tab?.windowId !== undefined) await chrome.sidePanel.open({ windowId: tab.windowId });
 }
 
-async function storeRemoteGarment(src: string): Promise<void> {
+async function storeRemoteGarment(src: string, metadata?: ProductMetadata): Promise<void> {
   try {
     const localFixture = src.startsWith(chrome.runtime.getURL('fixture/'));
     if (!/^https?:/i.test(src) && !src.startsWith('data:') && !localFixture) {
@@ -52,7 +53,12 @@ async function storeRemoteGarment(src: string): Promise<void> {
       updatedAt: Date.now(),
     });
     await chrome.storage.local.set({ garmentSelectionError: '' });
-    await chrome.runtime.sendMessage({ type: 'GARMENT_BYTES', dataUrl: '', sourceUrl: src });
+    await chrome.runtime.sendMessage({
+      type: 'GARMENT_BYTES',
+      dataUrl: '',
+      sourceUrl: src,
+      metadata,
+    });
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Could not copy this image.';
     await chrome.storage.local.set({ garmentSelectionError: reason });
@@ -99,7 +105,7 @@ chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     return true;
   }
   if (parsed.data.type === 'GARMENT_SELECTED') {
-    void storeRemoteGarment(parsed.data.image.src);
+    void storeRemoteGarment(parsed.data.image.src, parsed.data.metadata);
     sendResponse({ ok: true });
   }
   return false;

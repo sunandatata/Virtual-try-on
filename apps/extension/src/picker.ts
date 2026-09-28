@@ -1,4 +1,6 @@
 import type { ImageReference } from '@virtual-try-on/shared';
+import type { ProductMetadata } from '@virtual-try-on/shared';
+import { extractProductMetadata } from './product-metadata';
 
 const MIN_EDGE = 100;
 const MIN_AREA = 24_000;
@@ -13,7 +15,9 @@ export function isEligibleImage(image: HTMLImageElement): boolean {
   return !/(avatar|icon|logo|sprite|tracking|pixel)/i.test(`${alt} ${image.className}`);
 }
 
-export function startGarmentPicker(onSelect: (image: ImageReference) => void): () => void {
+export function startGarmentPicker(
+  onSelect: (image: ImageReference, metadata: ProductMetadata) => void,
+): () => void {
   const eligible = [...document.images].filter(isEligibleImage);
   const changedTabIndex = new Map<HTMLImageElement, string | null>();
   const previousOutline = new Map<HTMLImageElement, string>();
@@ -57,12 +61,15 @@ export function startGarmentPicker(onSelect: (image: ImageReference) => void): (
     event.preventDefault();
     event.stopImmediatePropagation();
     const rect = image.getBoundingClientRect();
-    onSelect({
-      src: image.currentSrc || image.src,
-      alt: image.alt,
-      width: rect.width,
-      height: rect.height,
-    });
+    onSelect(
+      {
+        src: image.currentSrc || image.src,
+        alt: image.alt,
+        width: rect.width,
+        height: rect.height,
+      },
+      extractProductMetadata(document, image),
+    );
     cleanup();
   };
   const onKey = (event: KeyboardEvent) => {

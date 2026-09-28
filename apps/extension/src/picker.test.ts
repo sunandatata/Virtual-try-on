@@ -25,7 +25,10 @@ describe('garment picker', () => {
     const selected = vi.fn();
     startGarmentPicker(selected);
     product.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    expect(selected).toHaveBeenCalledWith(expect.objectContaining({ alt: 'dress' }));
+    expect(selected).toHaveBeenCalledWith(
+      expect.objectContaining({ alt: 'dress' }),
+      expect.objectContaining({ sourceUrl: 'http://localhost:3000/' }),
+    );
     expect(document.querySelector('[data-virtual-try-on-picker]')).toBeNull();
   });
 });

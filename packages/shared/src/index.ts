@@ -66,11 +66,44 @@ export const imageReferenceSchema = z.object({
 });
 export type ImageReference = z.infer<typeof imageReferenceSchema>;
 
+export const metadataSuggestionSourceSchema = z.enum([
+  'json-ld',
+  'open-graph',
+  'nearby-content',
+  'image-alt',
+  'page-title',
+  'hostname',
+]);
+export const metadataSuggestionSchema = z.object({
+  value: z.string().min(1).max(500),
+  source: metadataSuggestionSourceSchema,
+  confidence: z.enum(['high', 'medium', 'low']),
+});
+export const productMetadataSchema = z.object({
+  productName: metadataSuggestionSchema.optional(),
+  displayedPrice: metadataSuggestionSchema.optional(),
+  color: metadataSuggestionSchema.optional(),
+  store: metadataSuggestionSchema,
+  sourceUrl: z.string().url().max(2048),
+  hostname: z.string().min(1).max(253),
+  warnings: z.array(z.string().min(1).max(300)).max(10),
+});
+export type ProductMetadata = z.infer<typeof productMetadataSchema>;
+
 export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('OPEN_PICKER') }),
   z.object({ type: z.literal('PICKER_CANCELLED') }),
-  z.object({ type: z.literal('GARMENT_SELECTED'), image: imageReferenceSchema }),
-  z.object({ type: z.literal('GARMENT_BYTES'), dataUrl: z.string(), sourceUrl: z.string() }),
+  z.object({
+    type: z.literal('GARMENT_SELECTED'),
+    image: imageReferenceSchema,
+    metadata: productMetadataSchema,
+  }),
+  z.object({
+    type: z.literal('GARMENT_BYTES'),
+    dataUrl: z.string(),
+    sourceUrl: z.string(),
+    metadata: productMetadataSchema.optional(),
+  }),
   z.object({ type: z.literal('GARMENT_FETCH_FAILED'), reason: z.string() }),
   z.object({ type: z.literal('GET_PENDING_GARMENT') }),
   z.object({ type: z.literal('CLEAR_PENDING_GARMENT') }),
