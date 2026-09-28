@@ -494,14 +494,52 @@ p {
   min-height: 40px;
 }
 .selection-bar {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   padding: 10px 12px;
   margin-bottom: 12px;
   border-radius: 11px;
   color: #305c60;
   background: #e4f0ed;
   font-size: 12px;
+}
+.selection-bar div {
+  display: grid;
+  gap: 2px;
+}
+.selection-bar .button {
+  width: auto;
+  min-height: 38px;
+  padding-inline: 13px;
+  white-space: nowrap;
+}
+.batch-progress {
+  display: grid;
+  gap: 3px;
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  border-radius: 11px;
+  color: #715514;
+  background: #f5ebc8;
+  font-size: 12px;
+}
+.batch-confirm {
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid #d4bbb0;
+  border-radius: 13px;
+  background: #fff8f2;
+}
+.batch-confirm h3 {
+  margin: 0;
+  font-family: Georgia, Cambria, serif;
+  font-size: 19px;
+}
+.batch-confirm p {
+  color: #6f6365;
+  font-size: 13px;
 }
 .queue-empty {
   display: grid;
@@ -600,6 +638,22 @@ p {
 .status-generating {
   color: #715514;
   background: #f5ebc8;
+}
+.provider-demo,
+.provider-real {
+  width: fit-content;
+  font-size: 10px;
+  font-weight: 800;
+}
+.provider-demo {
+  color: #8b4b34;
+}
+.provider-real {
+  color: #245a4e;
+}
+.queue-error {
+  color: #943e3e;
+  font-size: 11px;
 }
 .queue-actions {
   display: flex;

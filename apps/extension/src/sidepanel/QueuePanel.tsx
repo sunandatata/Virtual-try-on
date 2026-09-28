@@ -2,6 +2,10 @@ import type { GarmentCategory } from '@virtual-try-on/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createCaptureDraft } from '../lib/capture';
 import { processImage } from '../lib/images';
+import { getActiveGenerationBatch } from '../lib/batch-storage';
+import type { GenerationBatch } from '../lib/batch-storage';
+import { getSettings } from '../lib/settings';
+import { getImage } from '../lib/storage';
 import {
   commitCaptureDraft,
   deleteCaptureDraft,
@@ -212,6 +216,7 @@ function QueueCard({
   onChanged,
   onSelect,
   onMove,
+  selectionLimitReached,
 }: {
   item: QueueItem;
   selected: boolean;
@@ -220,6 +225,7 @@ function QueueCard({
   onChanged: () => void;
   onSelect: (selected: boolean) => void;
   onMove: (delta: number) => void;
+  selectionLimitReached: boolean;
 }) {
   const imageUrl = useAssetPreview(item.id);
   const [editing, setEditing] = useState(false);
@@ -248,7 +254,9 @@ function QueueCard({
           <input
             type="checkbox"
             checked={selected}
-            disabled={!['ready', 'failed'].includes(item.status)}
+            disabled={
+              !['ready', 'failed'].includes(item.status) || (!selected && selectionLimitReached)
+            }
             onChange={(event) => onSelect(event.target.checked)}
             aria-label={`Select ${item.productName} for generation`}
           />
@@ -276,6 +284,12 @@ function QueueCard({
             {[item.displayedPrice, item.color].filter(Boolean).join(' · ') || 'Details pending'}
           </span>
           <span className={`status-badge status-${item.status}`}>{item.status}</span>
+          {item.status === 'completed' && item.job.provider && (
+            <span className={item.job.provider === 'mock' ? 'provider-demo' : 'provider-real'}>
+              {item.job.provider === 'mock' ? 'Demo · not AI' : 'FASHN result'}
+            </span>
+          )}
+          {item.job.lastError && <span className="queue-error">{item.job.lastError.message}</span>}
         </div>
       </div>
       {editing && (
@@ -387,14 +401,23 @@ export function QueuePanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [captureError, setCaptureError] = useState('');
+  const [activeBatch, setActiveBatch] = useState<GenerationBatch>();
+  const [confirmBatch, setConfirmBatch] = useState(false);
+  const [batchError, setBatchError] = useState('');
+  const [startingBatch, setStartingBatch] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [nextItems, nextDraft] = await Promise.all([listQueueItems(), getLatestCaptureDraft()]);
+      const [nextItems, nextDraft, nextBatch] = await Promise.all([
+        listQueueItems(),
+        getLatestCaptureDraft(),
+        getActiveGenerationBatch(),
+      ]);
       setItems(nextItems);
       setDraft(nextDraft);
+      setActiveBatch(nextBatch);
       setSelected((current) => {
         const available = new Set(nextItems.map((item) => item.id));
         return new Set([...current].filter((id) => available.has(id)));
@@ -407,6 +430,22 @@ export function QueuePanel({
   }, []);
 
   useEffect(() => void load(), [load, refreshKey]);
+
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.onMessage) return;
+    const listener = (raw: unknown) => {
+      if (
+        raw &&
+        typeof raw === 'object' &&
+        'type' in raw &&
+        (raw as { type?: string }).type === 'BATCH_UPDATED'
+      ) {
+        void load();
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => chrome.runtime.onMessage.removeListener(listener);
+  }, [load]);
 
   const visible = useMemo(
     () => (filter === 'all' ? items : items.filter((item) => item.status === filter)),
@@ -421,6 +460,34 @@ export function QueuePanel({
     [ids[currentIndex], ids[targetIndex]] = [ids[targetIndex]!, ids[currentIndex]!];
     await replaceQueueOrder(ids);
     await load();
+  };
+
+  const startBatch = async () => {
+    setStartingBatch(true);
+    setBatchError('');
+    try {
+      const person = await getImage('person');
+      if (!person) throw new Error('Add a body photo in Single try-on before generating.');
+      const settings = await getSettings();
+      if (!settings.consent) {
+        throw new Error('Confirm body-photo processing consent in Single try-on first.');
+      }
+      const origin = new URL(settings.apiUrl).origin;
+      const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+      if (!granted) throw new Error('Backend access was not granted.');
+      const response = (await chrome.runtime.sendMessage({
+        type: 'START_BATCH',
+        itemIds: [...selected],
+      })) as { ok?: boolean; error?: string };
+      if (!response?.ok) throw new Error(response?.error ?? 'Could not start this batch.');
+      setSelected(new Set());
+      setConfirmBatch(false);
+      await load();
+    } catch (reason) {
+      setBatchError(reason instanceof Error ? reason.message : 'Could not start this batch.');
+    } finally {
+      setStartingBatch(false);
+    }
   };
 
   return (
@@ -488,11 +555,58 @@ export function QueuePanel({
             <option value="failed">Failed</option>
           </select>
         </label>
-        {selected.size > 0 && (
-          <div className="selection-bar" role="status">
-            <strong>{selected.size} selected</strong>
-            <span>Batch generation is prepared for the next step.</span>
+        {activeBatch && (
+          <div className="batch-progress" role="status" aria-live="polite">
+            <strong>
+              Generating {activeBatch.completedItemIds.length + activeBatch.failedItemIds.length} of{' '}
+              {activeBatch.itemIds.length}
+            </strong>
+            <span>Jobs run one at a time and continue if this panel closes.</span>
           </div>
+        )}
+        {selected.size > 0 && !activeBatch && (
+          <div className="selection-bar" role="status">
+            <div>
+              <strong>{selected.size} selected</strong>
+              <span>{selected.size >= 5 ? 'Batch limit reached.' : 'Select up to 5.'}</span>
+            </div>
+            <button className="button primary" onClick={() => setConfirmBatch(true)}>
+              Generate {selected.size}
+            </button>
+          </div>
+        )}
+        {confirmBatch && (
+          <div className="batch-confirm" role="dialog" aria-labelledby="batch-confirm-title">
+            <h3 id="batch-confirm-title">
+              Start {selected.size} {selected.size === 1 ? 'generation' : 'generations'}?
+            </h3>
+            <p>
+              This will request {selected.size} provider{' '}
+              {selected.size === 1 ? 'credit' : 'credits'}. Jobs run sequentially using your saved
+              body photo.
+            </p>
+            <div className="button-row">
+              <button
+                className="button primary"
+                disabled={startingBatch}
+                onClick={() => void startBatch()}
+              >
+                {startingBatch ? 'Starting…' : `Confirm ${selected.size}`}
+              </button>
+              <button
+                className="button secondary no-margin"
+                disabled={startingBatch}
+                onClick={() => setConfirmBatch(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {batchError && (
+          <p className="status error" role="alert">
+            {batchError}
+          </p>
         )}
         {loading ? (
           <p role="status">Loading your queue…</p>
@@ -536,6 +650,7 @@ export function QueuePanel({
                     })
                   }
                   onMove={(delta) => void move(item.id, delta)}
+                  selectionLimitReached={selected.size >= 5}
                 />
               );
             })}

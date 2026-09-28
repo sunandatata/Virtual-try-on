@@ -8,7 +8,7 @@ import {
   saveCaptureDraft,
 } from '../lib/queue-storage';
 import type { CaptureDraft, CreateQueueItemInput } from '../lib/queue-storage';
-import { clearAllLocalData } from '../lib/storage';
+import { clearAllLocalData, saveImage } from '../lib/storage';
 import { QueuePanel } from './QueuePanel';
 
 function draft(overrides: Partial<CaptureDraft> = {}): CaptureDraft {
@@ -66,6 +66,7 @@ describe('QueuePanel', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('requires review and an explicit category before saving a capture draft', async () => {
@@ -134,7 +135,7 @@ describe('QueuePanel', () => {
     await user.click(within(secondCard).getByRole('button', { name: 'Move up' }));
     await waitFor(async () => expect((await listQueueItems())[0]?.id).toBe(second.id));
 
-    const firstCard = screen.getByText('Queue Dress').closest('article')!;
+    const firstCard = (await screen.findByText('Queue Dress')).closest('article')!;
     await user.click(within(firstCard).getByRole('button', { name: 'Edit' }));
     const nameInput = within(firstCard).getByLabelText('Name');
     await user.clear(nameInput);
@@ -151,5 +152,64 @@ describe('QueuePanel', () => {
       expect((await listQueueItems()).map((item) => item.id)).toEqual([second.id]),
     );
     expect(first.id).not.toBe(second.id);
+  });
+
+  it('shows the exact provider request count and requires confirmation before a batch', async () => {
+    await saveImage({
+      slot: 'person',
+      blob: new Blob(['person'], { type: 'image/png' }),
+      name: 'person.png',
+      mime: 'image/png',
+      width: 800,
+      height: 1200,
+      updatedAt: 99,
+    });
+    await createQueueItem(queueInput());
+    await createQueueItem(
+      queueInput({
+        productName: 'Second Top',
+        category: 'top',
+        imageFingerprint: 'second',
+        duplicateKey: 'second',
+        now: 200,
+      }),
+    );
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true, batchId: 'batch-1' });
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn().mockResolvedValue({
+            apiUrl: 'https://api.example',
+            accessCode: '',
+            consent: true,
+          }),
+        },
+      },
+      permissions: { request: vi.fn().mockResolvedValue(true) },
+      runtime: {
+        sendMessage,
+        onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
+      },
+    });
+    const user = userEvent.setup();
+    render(<QueuePanel />);
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Queue Dress for generation' }),
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Select Second Top for generation' }));
+    await user.click(screen.getByRole('button', { name: 'Generate 2' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Start 2 generations?' });
+    expect(dialog).toHaveTextContent('request 2 provider credits');
+    expect(sendMessage).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Confirm 2' }));
+
+    await waitFor(() =>
+      expect(sendMessage).toHaveBeenCalledWith({
+        type: 'START_BATCH',
+        itemIds: expect.arrayContaining([expect.any(String), expect.any(String)]),
+      }),
+    );
   });
 });
