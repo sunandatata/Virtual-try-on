@@ -15,6 +15,7 @@ import { migrateLegacyGarmentToQueue } from '../lib/storage-migrations';
 import { deleteImage, getImage, saveImage } from '../lib/storage';
 import type { ImageSlot, StoredImage } from '../lib/storage';
 import { QueuePanel } from './QueuePanel';
+import { ComparisonPanel } from './ComparisonPanel';
 import { canGenerate, idleGeneration } from './state';
 import type { GenerationState } from './state';
 
@@ -107,7 +108,7 @@ export function App() {
   const [category, setCategory] = useState<GarmentCategory>('dress');
   const [generation, setGeneration] = useState<GenerationState>(idleGeneration);
   const [notice, setNotice] = useState('');
-  const [activeView, setActiveView] = useState<'queue' | 'try-on'>('queue');
+  const [activeView, setActiveView] = useState<'queue' | 'compare' | 'try-on'>('queue');
   const [queueRefreshKey, setQueueRefreshKey] = useState(0);
   const personUrl = usePreview(person);
   const garmentUrl = usePreview(garment);
@@ -347,6 +348,13 @@ export function App() {
           Queue
         </button>
         <button
+          aria-current={activeView === 'compare' ? 'page' : undefined}
+          className={activeView === 'compare' ? 'active' : ''}
+          onClick={() => setActiveView('compare')}
+        >
+          Compare
+        </button>
+        <button
           aria-current={activeView === 'try-on' ? 'page' : undefined}
           className={activeView === 'try-on' ? 'active' : ''}
           onClick={() => setActiveView('try-on')}
@@ -357,6 +365,8 @@ export function App() {
 
       {activeView === 'queue' ? (
         <QueuePanel refreshKey={queueRefreshKey} onSelectFromPage={selectFromPage} />
+      ) : activeView === 'compare' ? (
+        <ComparisonPanel />
       ) : !person || !settings.consent ? (
         <section className="card welcome">
           <p className="eyebrow">Welcome</p>
