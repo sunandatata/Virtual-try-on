@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { processImage } from '../lib/images';
 import { getSettings, saveSettings } from '../lib/settings';
 import type { ExtensionSettings } from '../lib/settings';
+import { migrateLegacyGarmentToQueue } from '../lib/storage-migrations';
 import { deleteImage, getImage, saveImage } from '../lib/storage';
 import type { ImageSlot, StoredImage } from '../lib/storage';
 import { canGenerate, idleGeneration } from './state';
@@ -195,6 +196,7 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
+      await migrateLegacyGarmentToQueue();
       const [savedPerson, savedGarment, savedResult, savedSettings, local] = await Promise.all([
         getImage('person'),
         getImage('garment'),
