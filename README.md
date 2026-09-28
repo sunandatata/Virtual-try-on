@@ -48,10 +48,10 @@ Use a random `JOB_TOKEN_SECRET` of at least 32 characters before any production 
 3. Run `npm run dev:api`.
 4. Run `npm run build -w @virtual-try-on/extension`.
 5. Open `chrome://extensions`, enable Developer mode, select **Load unpacked**, and choose `apps/extension/dist`.
-6. Pin Virtual Try-On, click its icon, and add the generated `apps/extension/public/fixture/person.png` body image. Confirm ownership/permission.
-7. In a tab, open `chrome-extension://EXTENSION_ID/fixture.html`. Click **Select garment from this page**, then choose the plum dress. Alternatively upload `apps/extension/public/fixture/dress.png`.
-8. Keep **Dress / one-piece** selected and press Generate. Chrome asks once for access to `http://localhost:3000`; approve it. The mock provider progresses briefly and returns an unmistakable **DEMO · NOT AI** result.
-9. Verify Download, Try another garment, Start over, body replacement, and deletion in Settings.
+6. Pin Virtual Try-On, open its **Profiles** tab, and create a profile with `apps/extension/public/fixture/person.png`. Enable **Allow generation with this photo**.
+7. In a tab, open `chrome-extension://EXTENSION_ID/fixture.html`. From **Queue**, pick the plum dress or upload `apps/extension/public/fixture/dress.png`, review the suggested metadata, choose **Dress / one-piece**, and add it to the queue.
+8. Select one or more queued garments, choose the body profile, and press Generate. Review the local readiness guidance and confirm the exact provider-credit count. Chrome asks once for access to `http://localhost:3000`; approve it.
+9. The sequential mock batch returns unmistakable **DEMO · NOT AI** results. Verify comparison, favorites, collections, source links, downloads, retries, profile replacement, and local-data deletion.
 
 The fixture uses only locally generated geometric artwork. It includes product images, a responsive image, a tiny decorative icon that the picker ignores, and a data-URL case that exercises the upload fallback.
 
@@ -100,7 +100,7 @@ Import the repository, set the project root to `apps/api`, keep the framework pr
 
 ## Automated and manual verification
 
-`npm run test:e2e` launches a persistent high-DPI Chromium context with `apps/extension/dist`. It exercises consent, IndexedDB uploads, the real fixture picker/content-script/background path, an intercepted mock submit/poll/result cycle, download control, error/retry rendering, start-over, manual upload, local-data deletion, settings, and Escape cleanup. The backend's real mock multipart flow is covered separately by API tests and a built-server smoke check. Native side-panel chrome, permission bubbles, context-menu placement, and the operating-system download shelf are browser UI surfaces that Playwright headless cannot fully assert; verify them manually:
+`npm run test:e2e` launches a persistent high-DPI Chromium context with `apps/extension/dist`. It exercises tab navigation, picker activation and cleanup, IndexedDB uploads, queue metadata review, an intercepted mock submit/poll/result cycle, download control, error/retry rendering, start-over, local-data deletion, and settings. Focused component tests cover queue batches, comparison, collections, profiles, and readiness decisions. The backend's real mock multipart flow is covered separately by API tests. Native side-panel chrome, permission bubbles, context-menu placement, and the operating-system download shelf are browser UI surfaces that Playwright headless cannot fully assert; verify them manually:
 
 - Toolbar click opens the panel on an HTTPS shop and on the fixture.
 - Restricted `chrome://` selection shows a friendly fallback.
@@ -124,4 +124,4 @@ Do not report these interactive checks as passed until performed in Chrome.
 
 ## Cross-store roadmap
 
-Development proceeds through eight ordered milestones: persistent queue, explicit-action metadata extraction, queue interface, safe sequential batches, comparison, collections, multiple body profiles, and explainable input-readiness checks. Outfit building, sharing, price monitoring, alternative discovery, non-Chromium browsers, and mobile sharing remain later roadmap items.
+All eight ordered milestones are implemented: persistent queue, explicit-action metadata extraction, queue interface, safe sequential batches, comparison, collections, multiple body profiles, and explainable input-readiness checks. Outfit building, sharing, price monitoring, alternative discovery, non-Chromium browsers, and mobile sharing remain later roadmap items.

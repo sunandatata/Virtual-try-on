@@ -1,5 +1,16 @@
 # Project Status
 
+## Cross-store differentiation complete - 2026-09-28
+
+- Completed all eight ordered milestones: persistent universal queue, explicit-action metadata extraction and review, narrow queue UI, recoverable sequential batches, two-to-four-item comparison, favorites and collections, reusable body profiles, and explainable readiness checks.
+- Queue items retain retailer-neutral product context, local assets, status/error history, results, favorites, collection membership, notes, ranks, and source links. Duplicate variants require explicit confirmation.
+- Batches persist the selected profile and image revision, process at most five garments sequentially, recover after service-worker suspension, and avoid automatic resubmission after an ambiguous provider handoff.
+- Body profiles remain in IndexedDB, migrate safely from the legacy photo, use per-profile consent, reset consent after replacement, and cannot be replaced or deleted during active generation.
+- Readiness review runs locally before provider confirmation and reports Ready, May work, or Replace recommended with specific decode, type, size, resolution, aspect-ratio, thumbnail, and near-uniform explanations. Unsafe files block submission; safe low-quality inputs require an explicit override.
+- Full validation passed: formatting, lint, strict type checking, 96 unit/component/API tests (API 23, extension 68, shared 5), production backend and extension builds, the Playwright unpacked-extension workflow, and extension packaging.
+- Generated dependencies, `.env.local`, `.next`, `dist`, Playwright output, test samples, and the release ZIP remain ignored and untracked. No body photos, secrets, or machine-specific files were staged.
+- Remaining external release work: run a real FASHN generation with a user-supplied backend key, complete the documented native Chrome checks, configure the production origin/rate limiter, and publish final privacy/contact details. Later product roadmap remains deliberately out of scope.
+
 ## Cross-store differentiation started - 2026-09-27
 
 - Repositioned the product around a universal local queue: collect garments from different stores, generate selected items with the same body profile, compare results, and return to original listings.
