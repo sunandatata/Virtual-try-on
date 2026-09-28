@@ -9,6 +9,7 @@ import {
 } from '../lib/queue-storage';
 import type { CaptureDraft, CreateQueueItemInput } from '../lib/queue-storage';
 import { clearAllLocalData, saveImage } from '../lib/storage';
+import { listCollections } from '../lib/collection-storage';
 import { QueuePanel } from './QueuePanel';
 
 function draft(overrides: Partial<CaptureDraft> = {}): CaptureDraft {
@@ -143,7 +144,7 @@ describe('QueuePanel', () => {
     await user.click(within(firstCard).getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Updated Dress')).toBeVisible();
 
-    await user.selectOptions(screen.getByLabelText('Filter'), 'completed');
+    await user.selectOptions(screen.getByLabelText('Filter by status'), 'completed');
     expect(screen.getByText('No items match this filter')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Show all items' }));
     const updatedCard = screen.getByText('Updated Dress').closest('article')!;
@@ -152,6 +153,46 @@ describe('QueuePanel', () => {
       expect((await listQueueItems()).map((item) => item.id)).toEqual([second.id]),
     );
     expect(first.id).not.toBe(second.id);
+  });
+
+  it('creates, assigns, filters, renames, and deletes collections without deleting garments', async () => {
+    await createQueueItem(queueInput());
+    await createQueueItem(
+      queueInput({
+        productName: 'Second Top',
+        category: 'top',
+        imageFingerprint: 'second',
+        duplicateKey: 'second',
+        now: 200,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<QueuePanel />);
+
+    await user.click(await screen.findByText('Manage collections'));
+    await user.type(screen.getByLabelText('New collection'), 'Vacation');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect((await screen.findAllByText('Vacation'))[0]).toBeVisible();
+
+    const dressCard = screen.getByText('Queue Dress').closest('article')!;
+    await user.click(within(dressCard).getByRole('button', { name: 'Collections' }));
+    await user.click(within(dressCard).getByRole('checkbox', { name: 'Vacation' }));
+    const vacationOption = screen.getByRole('option', { name: 'Vacation' });
+    await user.selectOptions(screen.getByLabelText('Filter by collection'), vacationOption);
+    expect(screen.getByText('Queue Dress')).toBeVisible();
+    expect(screen.queryByText('Second Top')).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Filter by collection'), 'all');
+    await user.click(screen.getByRole('button', { name: 'Rename' }));
+    const rename = screen.getByLabelText('Rename Vacation');
+    await user.clear(rename);
+    await user.type(rename, 'Summer');
+    await user.click(screen.getByRole('button', { name: 'Save name' }));
+    expect((await screen.findAllByText('Summer'))[0]).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(async () => expect(await listCollections()).toEqual([]));
+    expect(await listQueueItems()).toHaveLength(2);
   });
 
   it('shows the exact provider request count and requires confirmation before a batch', async () => {

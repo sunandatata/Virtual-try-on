@@ -7,6 +7,14 @@ import type { GenerationBatch } from '../lib/batch-storage';
 import { getSettings } from '../lib/settings';
 import { getImage } from '../lib/storage';
 import {
+  createCollection,
+  deleteCollection,
+  listCollections,
+  renameCollection,
+  setItemCollectionMembership,
+} from '../lib/collection-storage';
+import type { GarmentCollection } from '../lib/collection-storage';
+import {
   commitCaptureDraft,
   deleteCaptureDraft,
   deleteQueueItem,
@@ -22,6 +30,125 @@ import {
 import type { CaptureDraft, QueueItem, QueueStatus } from '../lib/queue-storage';
 
 type QueueFilter = 'all' | QueueStatus;
+type CollectionFilter = 'all' | 'favorites' | string;
+
+function CollectionRow({
+  collection,
+  onChanged,
+}: {
+  collection: GarmentCollection;
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(collection.name);
+  const [error, setError] = useState('');
+
+  return (
+    <li>
+      {editing ? (
+        <input
+          aria-label={`Rename ${collection.name}`}
+          value={name}
+          maxLength={80}
+          onChange={(event) => setName(event.target.value)}
+        />
+      ) : (
+        <span>{collection.name}</span>
+      )}
+      {editing ? (
+        <>
+          <button
+            onClick={async () => {
+              try {
+                await renameCollection(collection.id, name);
+                setEditing(false);
+                setError('');
+                onChanged();
+              } catch (reason) {
+                setError(reason instanceof Error ? reason.message : 'Could not rename collection.');
+              }
+            }}
+          >
+            Save name
+          </button>
+          <button onClick={() => setEditing(false)}>Cancel</button>
+        </>
+      ) : (
+        <>
+          <button onClick={() => setEditing(true)}>Rename</button>
+          <button
+            className="danger"
+            onClick={async () => {
+              if (
+                !window.confirm(`Delete the ${collection.name} collection? Garments stay saved.`)
+              ) {
+                return;
+              }
+              await deleteCollection(collection.id);
+              onChanged();
+            }}
+          >
+            Delete
+          </button>
+        </>
+      )}
+      {error && <small role="alert">{error}</small>}
+    </li>
+  );
+}
+
+function CollectionManager({
+  collections,
+  onChanged,
+}: {
+  collections: GarmentCollection[];
+  onChanged: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+
+  return (
+    <details className="collection-manager">
+      <summary>Manage collections</summary>
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault();
+          try {
+            await createCollection(name);
+            setName('');
+            setError('');
+            onChanged();
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : 'Could not create collection.');
+          }
+        }}
+      >
+        <label>
+          New collection
+          <input
+            value={name}
+            maxLength={80}
+            placeholder="Work, Wedding, Vacation…"
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <button className="button secondary no-margin" disabled={!name.trim()}>
+          Create
+        </button>
+      </form>
+      {error && <p className="status error">{error}</p>}
+      {collections.length === 0 ? (
+        <p className="muted">Create a collection to organize saved garments.</p>
+      ) : (
+        <ul>
+          {collections.map((collection) => (
+            <CollectionRow key={collection.id} collection={collection} onChanged={onChanged} />
+          ))}
+        </ul>
+      )}
+    </details>
+  );
+}
 
 function useAssetPreview(itemId: string): string {
   const [url, setUrl] = useState('');
@@ -217,6 +344,7 @@ function QueueCard({
   onSelect,
   onMove,
   selectionLimitReached,
+  collections,
 }: {
   item: QueueItem;
   selected: boolean;
@@ -226,9 +354,11 @@ function QueueCard({
   onSelect: (selected: boolean) => void;
   onMove: (delta: number) => void;
   selectionLimitReached: boolean;
+  collections: GarmentCollection[];
 }) {
   const imageUrl = useAssetPreview(item.id);
   const [editing, setEditing] = useState(false);
+  const [organizing, setOrganizing] = useState(false);
   const [draft, setDraft] = useState(item);
 
   useEffect(() => setDraft(item), [item]);
@@ -349,6 +479,28 @@ function QueueCard({
           </div>
         </div>
       )}
+      {organizing && (
+        <fieldset className="queue-collections">
+          <legend>Collections for {item.productName}</legend>
+          {collections.length === 0 ? (
+            <span>Create a collection above first.</span>
+          ) : (
+            collections.map((collection) => (
+              <label key={collection.id}>
+                <input
+                  type="checkbox"
+                  checked={item.collectionIds.includes(collection.id)}
+                  onChange={async (event) => {
+                    await setItemCollectionMembership(item.id, collection.id, event.target.checked);
+                    onChanged();
+                  }}
+                />
+                {collection.name}
+              </label>
+            ))
+          )}
+        </fieldset>
+      )}
       <div className="queue-actions" aria-label={`Actions for ${item.productName}`}>
         {item.sourceUrl && (
           <a href={item.sourceUrl} target="_blank" rel="noreferrer">
@@ -356,6 +508,7 @@ function QueueCard({
           </a>
         )}
         <button onClick={() => setEditing((value) => !value)}>Edit</button>
+        <button onClick={() => setOrganizing((value) => !value)}>Collections</button>
         {item.status === 'failed' && (
           <button
             onClick={async () => {
@@ -395,8 +548,10 @@ export function QueuePanel({
   onSelectFromPage?: () => Promise<string | undefined>;
 }) {
   const [items, setItems] = useState<QueueItem[]>([]);
+  const [collections, setCollections] = useState<GarmentCollection[]>([]);
   const [draft, setDraft] = useState<CaptureDraft>();
   const [filter, setFilter] = useState<QueueFilter>('all');
+  const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -410,12 +565,14 @@ export function QueuePanel({
     setLoading(true);
     setError('');
     try {
-      const [nextItems, nextDraft, nextBatch] = await Promise.all([
+      const [nextItems, nextDraft, nextBatch, nextCollections] = await Promise.all([
         listQueueItems(),
         getLatestCaptureDraft(),
         getActiveGenerationBatch(),
+        listCollections(),
       ]);
       setItems(nextItems);
+      setCollections(nextCollections);
       setDraft(nextDraft);
       setActiveBatch(nextBatch);
       setSelected((current) => {
@@ -430,6 +587,16 @@ export function QueuePanel({
   }, []);
 
   useEffect(() => void load(), [load, refreshKey]);
+
+  useEffect(() => {
+    if (
+      collectionFilter !== 'all' &&
+      collectionFilter !== 'favorites' &&
+      !collections.some((collection) => collection.id === collectionFilter)
+    ) {
+      setCollectionFilter('all');
+    }
+  }, [collectionFilter, collections]);
 
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.runtime?.onMessage) return;
@@ -447,10 +614,12 @@ export function QueuePanel({
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, [load]);
 
-  const visible = useMemo(
-    () => (filter === 'all' ? items : items.filter((item) => item.status === filter)),
-    [filter, items],
-  );
+  const visible = useMemo(() => {
+    const byStatus = filter === 'all' ? items : items.filter((item) => item.status === filter);
+    if (collectionFilter === 'all') return byStatus;
+    if (collectionFilter === 'favorites') return byStatus.filter((item) => item.favorite);
+    return byStatus.filter((item) => item.collectionIds.includes(collectionFilter));
+  }, [collectionFilter, filter, items]);
 
   const move = async (id: string, delta: number) => {
     const currentIndex = items.findIndex((item) => item.id === id);
@@ -544,17 +713,40 @@ export function QueuePanel({
             {captureError}
           </p>
         )}
-        <label className="queue-filter">
-          Filter
-          <select value={filter} onChange={(event) => setFilter(event.target.value as QueueFilter)}>
-            <option value="all">All items</option>
-            <option value="saved">Saved</option>
-            <option value="ready">Ready</option>
-            <option value="generating">Generating</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-          </select>
-        </label>
+        <CollectionManager collections={collections} onChanged={() => void load()} />
+        <div className="queue-filter-row">
+          <label className="queue-filter">
+            Status
+            <select
+              aria-label="Filter by status"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as QueueFilter)}
+            >
+              <option value="all">All statuses</option>
+              <option value="saved">Saved</option>
+              <option value="ready">Ready</option>
+              <option value="generating">Generating</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+            </select>
+          </label>
+          <label className="queue-filter">
+            Collection
+            <select
+              aria-label="Filter by collection"
+              value={collectionFilter}
+              onChange={(event) => setCollectionFilter(event.target.value)}
+            >
+              <option value="all">All collections</option>
+              <option value="favorites">Favorites</option>
+              {collections.map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {activeBatch && (
           <div className="batch-progress" role="status" aria-live="polite">
             <strong>
@@ -625,7 +817,13 @@ export function QueuePanel({
         ) : visible.length === 0 ? (
           <div className="queue-empty">
             <strong>No items match this filter</strong>
-            <button className="link" onClick={() => setFilter('all')}>
+            <button
+              className="link"
+              onClick={() => {
+                setFilter('all');
+                setCollectionFilter('all');
+              }}
+            >
               Show all items
             </button>
           </div>
@@ -651,6 +849,7 @@ export function QueuePanel({
                   }
                   onMove={(delta) => void move(item.id, delta)}
                   selectionLimitReached={selected.size >= 5}
+                  collections={collections}
                 />
               );
             })}
