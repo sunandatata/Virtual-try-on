@@ -77,6 +77,15 @@ separate units; do not combine unrelated work merely to keep the commit count lo
 
 Valid commit units include:
 
+- Domain types and schemas
+- IndexedDB migrations and storage repositories
+- Metadata extraction and focused fallback coverage
+- Queue components and interaction logic
+- Batch engine and progress interface
+- Comparison state and comparison UI
+- Collections storage and UI
+- Body-profile migration and interface
+- Readiness analysis and readiness UI
 - A focused user-facing behavior or workflow
 - A bug fix together with its regression coverage
 - A contained security, privacy, accessibility, or reliability improvement
@@ -87,6 +96,25 @@ Valid commit units include:
 Keep implementation and the tests required to validate it together when they form one logical
 change. Do not split tightly coupled edits, manufacture work, or create commits solely to increase
 the contribution count.
+
+### Required sequence for every commit
+
+For every meaningful unit:
+
+1. Implement the unit.
+2. Review the complete diff and remove debugging code or accidental files.
+3. Run focused tests, linting, and strict type checking for the affected scope.
+4. Fix failures before staging.
+5. Inspect staged filenames and scan staged content for secrets, personal images, private URLs, and unexpectedly large files.
+6. Stage only the intended files; never use a broad staging command without first reviewing its full inclusion set.
+7. Create a precise Conventional Commit message.
+8. Push the commit to the existing GitHub remote immediately after validation.
+9. Verify the remote hash and check CI when the push triggered a workflow.
+10. Continue to the next unit only after the current commit is safely pushed.
+
+Frequent pushing exists to keep real work visible, backed up, and reviewable. It does not justify empty, artificial, fragmented, or knowingly broken commits.
+
+If a push fails, keep the local commit intact, diagnose and retry safely, never force-push, and report the blocker without claiming that the contribution is visible.
 
 ### Files that must never be committed
 
@@ -160,29 +188,32 @@ Use least-privilege GitHub Actions permissions. Do not place secrets directly in
 
 At the beginning of a later work session:
 
-1. Inspect the current branch and working tree.
-2. Fetch remote changes.
-3. Use a safe fast-forward pull when appropriate.
-4. Read `SPEC.md`, `PLAN.md`, and `STATUS.md`.
-5. Continue from the next incomplete milestone.
-6. Do not redo completed work.
+1. Inspect the current branch and working tree and preserve unrelated user changes.
+2. Verify the existing remote and its default branch.
+3. Verify `git config user.name` and `git config user.email` and confirm GitHub attribution.
+4. Fetch remote changes and use a safe fast-forward-only pull when appropriate.
+5. Confirm no secrets, generated dependencies, or personal images are tracked.
+6. Read `SPEC.md`, `PLAN.md`, and `STATUS.md` and continue from the next incomplete milestone.
+7. Do not redo completed work or rewrite published history.
 
 At the end of the session, push only if meaningful tracked changes were completed and committed.
 
 If there are no meaningful changes that day, do not create an empty commit.
 
+Before ending a productive implementation session, run formatting, linting, strict type checking, unit/component tests, relevant Playwright tests, backend build, extension build, and extension packaging. Verify the working tree, confirm every meaningful commit was pushed, check the latest CI result, and update `STATUS.md` only when the update accompanies useful implementation or documentation.
+
 ### Completion report
 
 Every session that commits work must report:
 
-- Milestone completed
+- Product milestones and user-visible improvements completed
 - Tests and checks run
 - Files intentionally excluded
-- Commit messages
-- Commit hashes
-- Branch pushed
-- Whether the GitHub push succeeded
-- Next planned milestone
+- Every commit message and hash
+- Branch used and push result for every commit
+- Latest CI status
+- Any GitHub email or attribution concern
+- Next meaningful milestone
 
 Before considering the overall project complete, verify that:
 
