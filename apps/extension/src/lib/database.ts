@@ -103,6 +103,7 @@ export type BatchStatus = 'queued' | 'running' | 'completed' | 'completed-with-e
 
 export type GenerationBatch = {
   id: string;
+  profileId?: string;
   itemIds: string[];
   status: BatchStatus;
   currentItemId?: string;
@@ -119,6 +120,20 @@ export type GarmentCollection = {
   normalizedName: string;
   createdAt: number;
   updatedAt: number;
+};
+
+export type BodyProfile = {
+  id: string;
+  profileName: string;
+  description?: string;
+  blob: Blob;
+  imageName: string;
+  mime: string;
+  width: number;
+  height: number;
+  createdAt: number;
+  updatedAt: number;
+  isDefault: boolean;
 };
 
 interface VirtualTryOnDatabase extends DBSchema {
@@ -170,10 +185,17 @@ interface VirtualTryOnDatabase extends DBSchema {
       'by-created-at': number;
     };
   };
+  bodyProfiles: {
+    key: string;
+    value: BodyProfile;
+    indexes: {
+      'by-created-at': number;
+    };
+  };
 }
 
 export const DATABASE_NAME = 'virtual-try-on';
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 let databasePromise: Promise<IDBPDatabase<VirtualTryOnDatabase>> | undefined;
 
@@ -210,6 +232,10 @@ export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
         const collections = database.createObjectStore('collections', { keyPath: 'id' });
         collections.createIndex('by-normalized-name', 'normalizedName', { unique: true });
         collections.createIndex('by-created-at', 'createdAt');
+      }
+      if (!database.objectStoreNames.contains('bodyProfiles')) {
+        const profiles = database.createObjectStore('bodyProfiles', { keyPath: 'id' });
+        profiles.createIndex('by-created-at', 'createdAt');
       }
     },
     blocking() {

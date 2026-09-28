@@ -2,10 +2,16 @@ import { openDatabase } from './database';
 import type { QueueAsset, QueueItem } from './database';
 
 const LEGACY_GARMENT_MIGRATION = 'migration:legacy-garment-to-queue:v2';
+const LEGACY_PERSON_MIGRATION = 'migration:legacy-person-to-profile:v5';
 
 export type LegacyGarmentMigrationResult =
   | { status: 'migrated'; queueItemId: string }
   | { status: 'already-migrated'; queueItemId?: string }
+  | { status: 'nothing-to-migrate' };
+
+export type LegacyPersonMigrationResult =
+  | { status: 'migrated'; profileId: string }
+  | { status: 'already-migrated'; profileId?: string }
   | { status: 'nothing-to-migrate' };
 
 function createId(prefix: string): string {
@@ -17,6 +23,51 @@ function readableLegacyName(filename: string): string {
   const withoutExtension = filename.replace(/\.[^.]+$/, '');
   const normalized = withoutExtension.replace(/[-_]+/g, ' ').trim();
   return normalized || 'Saved garment';
+}
+
+export async function migrateLegacyPersonToProfile(): Promise<LegacyPersonMigrationResult> {
+  const database = await openDatabase();
+  const transaction = database.transaction(['images', 'bodyProfiles', 'metadata'], 'readwrite');
+  const metadataStore = transaction.objectStore('metadata');
+  const completed = await metadataStore.get(LEGACY_PERSON_MIGRATION);
+  if (completed) {
+    await transaction.done;
+    const value = completed.value as { profileId?: string } | undefined;
+    return { status: 'already-migrated', profileId: value?.profileId };
+  }
+  const existingProfiles = await transaction.objectStore('bodyProfiles').count();
+  const legacyPerson = await transaction.objectStore('images').get('person');
+  if (!legacyPerson || existingProfiles > 0) {
+    await metadataStore.put({
+      key: LEGACY_PERSON_MIGRATION,
+      value: { completedAt: Date.now() },
+    });
+    await transaction.done;
+    return { status: 'nothing-to-migrate' };
+  }
+  const now = Date.now();
+  const profileId = createId('profile');
+  await Promise.all([
+    transaction.objectStore('bodyProfiles').add({
+      id: profileId,
+      profileName: 'Default profile',
+      description: 'Migrated saved body photo',
+      blob: legacyPerson.blob,
+      imageName: legacyPerson.name,
+      mime: legacyPerson.mime,
+      width: legacyPerson.width,
+      height: legacyPerson.height,
+      createdAt: legacyPerson.updatedAt || now,
+      updatedAt: legacyPerson.updatedAt || now,
+      isDefault: true,
+    }),
+    metadataStore.put({
+      key: LEGACY_PERSON_MIGRATION,
+      value: { completedAt: now, profileId },
+    }),
+  ]);
+  await transaction.done;
+  return { status: 'migrated', profileId };
 }
 
 export async function migrateLegacyGarmentToQueue(): Promise<LegacyGarmentMigrationResult> {
