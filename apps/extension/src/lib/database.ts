@@ -98,6 +98,20 @@ export type DatabaseMetadata = {
   value: unknown;
 };
 
+export type BatchStatus = 'queued' | 'running' | 'completed' | 'completed-with-errors';
+
+export type GenerationBatch = {
+  id: string;
+  itemIds: string[];
+  status: BatchStatus;
+  currentItemId?: string;
+  completedItemIds: string[];
+  failedItemIds: string[];
+  personImageUpdatedAt: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
 interface VirtualTryOnDatabase extends DBSchema {
   images: {
     key: ImageSlot;
@@ -131,10 +145,18 @@ interface VirtualTryOnDatabase extends DBSchema {
     key: string;
     value: DatabaseMetadata;
   };
+  batches: {
+    key: string;
+    value: GenerationBatch;
+    indexes: {
+      'by-created-at': number;
+      'by-status': BatchStatus;
+    };
+  };
 }
 
 export const DATABASE_NAME = 'virtual-try-on';
-export const DATABASE_VERSION = 2;
+export const DATABASE_VERSION = 3;
 
 let databasePromise: Promise<IDBPDatabase<VirtualTryOnDatabase>> | undefined;
 
@@ -161,6 +183,11 @@ export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
       }
       if (!database.objectStoreNames.contains('metadata')) {
         database.createObjectStore('metadata', { keyPath: 'key' });
+      }
+      if (!database.objectStoreNames.contains('batches')) {
+        const batches = database.createObjectStore('batches', { keyPath: 'id' });
+        batches.createIndex('by-created-at', 'createdAt');
+        batches.createIndex('by-status', 'status');
       }
     },
     blocking() {

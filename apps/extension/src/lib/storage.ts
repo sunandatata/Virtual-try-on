@@ -22,7 +22,7 @@ export async function clearImages() {
 export async function clearAllLocalData(): Promise<void> {
   const database = await openDatabase();
   const transaction = database.transaction(
-    ['images', 'queueItems', 'assets', 'captureDrafts', 'metadata'],
+    ['images', 'queueItems', 'assets', 'captureDrafts', 'metadata', 'batches'],
     'readwrite',
   );
   await Promise.all([
@@ -31,6 +31,7 @@ export async function clearAllLocalData(): Promise<void> {
     transaction.objectStore('assets').clear(),
     transaction.objectStore('captureDrafts').clear(),
     transaction.objectStore('metadata').clear(),
+    transaction.objectStore('batches').clear(),
     transaction.done,
   ]);
   if (typeof chrome !== 'undefined' && chrome.storage) {
