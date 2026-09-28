@@ -7,7 +7,7 @@ import {
   saveQueueResult,
   updateQueueItem,
 } from './queue-storage';
-import { getImage } from './storage';
+import { getBodyProfile } from './body-profile-storage';
 import type { ExtensionSettings } from './settings';
 
 export type BatchEngineDependencies = {
@@ -98,7 +98,7 @@ async function parseError(response: Response): Promise<{
 export async function processActiveBatchStep(dependencies: BatchEngineDependencies): Promise<void> {
   const batch = await getActiveGenerationBatch();
   if (!batch) return;
-  const person = await getImage('person');
+  const person = batch.profileId ? await getBodyProfile(batch.profileId) : undefined;
   if (!person || person.updatedAt !== batch.personImageUpdatedAt) {
     const unfinished = batch.itemIds.filter(
       (id) => !batch.completedItemIds.includes(id) && !batch.failedItemIds.includes(id),
@@ -212,7 +212,7 @@ export async function processActiveBatchStep(dependencies: BatchEngineDependenci
     await notify(dependencies);
     try {
       const form = new FormData();
-      form.set('person', person.blob, person.name);
+      form.set('person', person.blob, person.imageName);
       form.set('garment', garment.blob, garment.name);
       form.set('category', item.category);
       form.set('submissionId', submissionId);

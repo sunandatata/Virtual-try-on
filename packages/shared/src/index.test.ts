@@ -17,4 +17,17 @@ describe('extension messages', () => {
       false,
     );
   });
+
+  it('requires a body profile for batch generation', () => {
+    expect(
+      extensionMessageSchema.safeParse({
+        type: 'START_BATCH',
+        itemIds: ['queue-1'],
+        profileId: 'profile-1',
+      }).success,
+    ).toBe(true);
+    expect(
+      extensionMessageSchema.safeParse({ type: 'START_BATCH', itemIds: ['queue-1'] }).success,
+    ).toBe(false);
+  });
 });

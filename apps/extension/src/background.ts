@@ -2,9 +2,10 @@ import { extensionMessageSchema, MAX_IMAGE_BYTES } from '@virtual-try-on/shared'
 import type { ProductMetadata } from '@virtual-try-on/shared';
 import { processActiveBatchStep } from './lib/batch-engine';
 import { createGenerationBatch } from './lib/batch-storage';
+import { getBodyProfile } from './lib/body-profile-storage';
 import { createCaptureDraft } from './lib/capture';
 import { getSettings } from './lib/settings';
-import { getImage, saveImage } from './lib/storage';
+import { saveImage } from './lib/storage';
 
 const MENU_ID = 'virtual-try-on-image';
 const BATCH_ALARM = 'virtual-try-on-batch';
@@ -159,11 +160,12 @@ chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
   }
   if (parsed.data.type === 'START_BATCH') {
     const itemIds = parsed.data.itemIds;
+    const profileId = parsed.data.profileId;
     void (async () => {
       try {
-        const person = await getImage('person');
-        if (!person) throw new Error('Add a body photo before starting a batch.');
-        const batch = await createGenerationBatch(itemIds, person.updatedAt);
+        const person = await getBodyProfile(profileId);
+        if (!person) throw new Error('Choose an available body profile before starting a batch.');
+        const batch = await createGenerationBatch(itemIds, person);
         sendResponse({ ok: true, batchId: batch.id });
         await runBatchSafely();
       } catch (error) {

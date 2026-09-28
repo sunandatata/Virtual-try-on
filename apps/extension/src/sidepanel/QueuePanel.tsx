@@ -5,7 +5,6 @@ import { processImage } from '../lib/images';
 import { getActiveGenerationBatch } from '../lib/batch-storage';
 import type { GenerationBatch } from '../lib/batch-storage';
 import { getSettings } from '../lib/settings';
-import { getImage } from '../lib/storage';
 import {
   createCollection,
   deleteCollection,
@@ -14,6 +13,8 @@ import {
   setItemCollectionMembership,
 } from '../lib/collection-storage';
 import type { GarmentCollection } from '../lib/collection-storage';
+import { listBodyProfiles } from '../lib/body-profile-storage';
+import type { BodyProfile } from '../lib/body-profile-storage';
 import {
   commitCaptureDraft,
   deleteCaptureDraft,
@@ -549,6 +550,8 @@ export function QueuePanel({
 }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [collections, setCollections] = useState<GarmentCollection[]>([]);
+  const [profiles, setProfiles] = useState<BodyProfile[]>([]);
+  const [profileId, setProfileId] = useState('');
   const [draft, setDraft] = useState<CaptureDraft>();
   const [filter, setFilter] = useState<QueueFilter>('all');
   const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>('all');
@@ -565,14 +568,20 @@ export function QueuePanel({
     setLoading(true);
     setError('');
     try {
-      const [nextItems, nextDraft, nextBatch, nextCollections] = await Promise.all([
+      const [nextItems, nextDraft, nextBatch, nextCollections, nextProfiles] = await Promise.all([
         listQueueItems(),
         getLatestCaptureDraft(),
         getActiveGenerationBatch(),
         listCollections(),
+        listBodyProfiles(),
       ]);
       setItems(nextItems);
       setCollections(nextCollections);
+      setProfiles(nextProfiles);
+      setProfileId((current) => {
+        if (nextProfiles.some((profile) => profile.id === current)) return current;
+        return nextProfiles.find((profile) => profile.isDefault)?.id ?? nextProfiles[0]?.id ?? '';
+      });
       setDraft(nextDraft);
       setActiveBatch(nextBatch);
       setSelected((current) => {
@@ -635,8 +644,7 @@ export function QueuePanel({
     setStartingBatch(true);
     setBatchError('');
     try {
-      const person = await getImage('person');
-      if (!person) throw new Error('Add a body photo in Single try-on before generating.');
+      if (!profileId) throw new Error('Create or choose a body profile before generating.');
       const settings = await getSettings();
       if (!settings.consent) {
         throw new Error('Confirm body-photo processing consent in Single try-on first.');
@@ -647,6 +655,7 @@ export function QueuePanel({
       const response = (await chrome.runtime.sendMessage({
         type: 'START_BATCH',
         itemIds: [...selected],
+        profileId,
       })) as { ok?: boolean; error?: string };
       if (!response?.ok) throw new Error(response?.error ?? 'Could not start this batch.');
       setSelected(new Set());
@@ -766,6 +775,23 @@ export function QueuePanel({
               Generate {selected.size}
             </button>
           </div>
+        )}
+        {selected.size > 0 && !activeBatch && (
+          <label className="queue-filter batch-profile-picker">
+            Body profile
+            <select value={profileId} onChange={(event) => setProfileId(event.target.value)}>
+              {profiles.length === 0 ? (
+                <option value="">Create a profile first</option>
+              ) : (
+                profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.profileName}
+                    {profile.isDefault ? ' (default)' : ''}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
         )}
         {confirmBatch && (
           <div className="batch-confirm" role="dialog" aria-labelledby="batch-confirm-title">

@@ -111,6 +111,7 @@ export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('START_BATCH'),
     itemIds: z.array(z.string().min(1)).min(1).max(5),
+    profileId: z.string().min(1),
   }),
   z.object({ type: z.literal('BATCH_UPDATED') }),
 ]);

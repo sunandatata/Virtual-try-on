@@ -10,6 +10,7 @@ import {
 import type { CaptureDraft, CreateQueueItemInput } from '../lib/queue-storage';
 import { clearAllLocalData, saveImage } from '../lib/storage';
 import { listCollections } from '../lib/collection-storage';
+import { createBodyProfile } from '../lib/body-profile-storage';
 import { QueuePanel } from './QueuePanel';
 
 function draft(overrides: Partial<CaptureDraft> = {}): CaptureDraft {
@@ -196,6 +197,16 @@ describe('QueuePanel', () => {
   });
 
   it('shows the exact provider request count and requires confirmation before a batch', async () => {
+    const profile = await createBodyProfile({
+      profileName: 'Front',
+      image: {
+        blob: new Blob(['person'], { type: 'image/png' }),
+        imageName: 'person.png',
+        mime: 'image/png',
+        width: 800,
+        height: 1200,
+      },
+    });
     await saveImage({
       slot: 'person',
       blob: new Blob(['person'], { type: 'image/png' }),
@@ -250,6 +261,7 @@ describe('QueuePanel', () => {
       expect(sendMessage).toHaveBeenCalledWith({
         type: 'START_BATCH',
         itemIds: expect.arrayContaining([expect.any(String), expect.any(String)]),
+        profileId: profile.id,
       }),
     );
   });

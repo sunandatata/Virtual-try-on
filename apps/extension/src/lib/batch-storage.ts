@@ -12,7 +12,7 @@ function createId(): string {
 
 export async function createGenerationBatch(
   itemIds: string[],
-  personImageUpdatedAt: number,
+  profile: { id: string; updatedAt: number },
   now = Date.now(),
 ): Promise<GenerationBatch> {
   const uniqueIds = [...new Set(itemIds)];
@@ -22,7 +22,11 @@ export async function createGenerationBatch(
   }
 
   const database = await openDatabase();
-  const transaction = database.transaction(['queueItems', 'batches'], 'readwrite');
+  const transaction = database.transaction(['queueItems', 'batches', 'bodyProfiles'], 'readwrite');
+  const storedProfile = await transaction.objectStore('bodyProfiles').get(profile.id);
+  if (!storedProfile || storedProfile.updatedAt !== profile.updatedAt) {
+    throw new Error('The selected body profile changed or no longer exists.');
+  }
   const queueStore = transaction.objectStore('queueItems');
   const items = await Promise.all(uniqueIds.map((id) => queueStore.get(id)));
   if (items.some((item) => !item)) throw new Error('One or more queue items no longer exist.');
@@ -46,11 +50,12 @@ export async function createGenerationBatch(
 
   const batch: GenerationBatch = {
     id: createId(),
+    profileId: profile.id,
     itemIds: uniqueIds,
     status: 'queued',
     completedItemIds: [],
     failedItemIds: [],
-    personImageUpdatedAt,
+    personImageUpdatedAt: profile.updatedAt,
     createdAt: now,
     updatedAt: now,
   };

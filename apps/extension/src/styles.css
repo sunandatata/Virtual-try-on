@@ -592,6 +592,9 @@ p {
   background: #e4f0ed;
   font-size: 12px;
 }
+.batch-profile-picker {
+  margin: 8px 0;
+}
 .selection-bar div {
   display: grid;
   gap: 2px;

@@ -5,6 +5,8 @@ import { createGenerationBatch, getGenerationBatch, updateGenerationBatch } from
 import { createQueueItem, getQueueItem, updateQueueItem } from './queue-storage';
 import type { CreateQueueItemInput } from './queue-storage';
 import { clearAllLocalData, saveImage } from './storage';
+import { createBodyProfile } from './body-profile-storage';
+import type { BodyProfile } from './body-profile-storage';
 
 function queueInput(index: number): CreateQueueItemInput {
   return {
@@ -24,7 +26,7 @@ function queueInput(index: number): CreateQueueItemInput {
   };
 }
 
-async function savePerson() {
+async function savePerson(): Promise<BodyProfile> {
   await saveImage({
     slot: 'person',
     blob: new Blob(['person'], { type: 'image/png' }),
@@ -33,6 +35,17 @@ async function savePerson() {
     width: 800,
     height: 1200,
     updatedAt: 99,
+  });
+  return createBodyProfile({
+    profileName: 'Front',
+    image: {
+      blob: new Blob(['person'], { type: 'image/png' }),
+      imageName: 'person.png',
+      mime: 'image/png',
+      width: 800,
+      height: 1200,
+    },
+    now: 99,
   });
 }
 
@@ -58,9 +71,10 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('sequential batch engine', () => {
+  let profile: BodyProfile;
   beforeEach(async () => {
     await clearAllLocalData();
-    await savePerson();
+    profile = await savePerson();
     // fake-indexeddb does not preserve jsdom Blob prototypes after structured cloning.
     vi.spyOn(FormData.prototype, 'set').mockImplementation(() => undefined);
   });
@@ -70,7 +84,7 @@ describe('sequential batch engine', () => {
   it('submits and completes queue items one at a time in batch order', async () => {
     const first = await createQueueItem(queueInput(1));
     const second = await createQueueItem(queueInput(2));
-    const batch = await createGenerationBatch([first.id, second.id], 99, 100);
+    const batch = await createGenerationBatch([first.id, second.id], profile, 100);
     let token = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -129,7 +143,7 @@ describe('sequential batch engine', () => {
 
   it('polls an existing provider token without submitting again', async () => {
     const item = await createQueueItem(queueInput(1));
-    const batch = await createGenerationBatch([item.id], 99, 100);
+    const batch = await createGenerationBatch([item.id], profile, 100);
     await updateQueueItem(item.id, (current) => ({
       ...current,
       job: {
@@ -160,7 +174,7 @@ describe('sequential batch engine', () => {
 
   it('does not resubmit an interrupted submission with an ambiguous provider outcome', async () => {
     const item = await createQueueItem(queueInput(1));
-    const batch = await createGenerationBatch([item.id], 99, 100);
+    const batch = await createGenerationBatch([item.id], profile, 100);
     await updateQueueItem(item.id, (current) => ({
       ...current,
       job: {
@@ -188,7 +202,7 @@ describe('sequential batch engine', () => {
   it('isolates a provider failure and schedules the next item', async () => {
     const first = await createQueueItem(queueInput(1));
     const second = await createQueueItem(queueInput(2));
-    const batch = await createGenerationBatch([first.id, second.id], 99, 100);
+    const batch = await createGenerationBatch([first.id, second.id], profile, 100);
     const fetchMock = vi.fn(async () =>
       jsonResponse(
         {
