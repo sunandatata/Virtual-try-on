@@ -108,6 +108,11 @@ export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('GARMENT_FETCH_FAILED'), reason: z.string() }),
   z.object({ type: z.literal('GET_PENDING_GARMENT') }),
   z.object({ type: z.literal('CLEAR_PENDING_GARMENT') }),
+  z.object({
+    type: z.literal('START_BATCH'),
+    itemIds: z.array(z.string().min(1)).min(1).max(5),
+  }),
+  z.object({ type: z.literal('BATCH_UPDATED') }),
 ]);
 export type ExtensionMessage = z.infer<typeof extensionMessageSchema>;
 

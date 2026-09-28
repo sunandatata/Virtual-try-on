@@ -15,7 +15,7 @@ const manifest = {
   description: 'Preview clothing with your locally saved body photo while you shop.',
   version: '0.1.0',
   minimum_chrome_version: '116',
-  permissions: ['sidePanel', 'activeTab', 'scripting', 'storage', 'contextMenus'],
+  permissions: ['sidePanel', 'activeTab', 'scripting', 'storage', 'contextMenus', 'alarms'],
   optional_host_permissions: optionalHosts,
   background: { service_worker: 'background.js', type: 'module' },
   action: { default_title: 'Open Virtual Try-On', default_icon: iconMap() },

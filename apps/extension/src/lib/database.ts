@@ -22,6 +22,7 @@ export type QueueJob = {
   status: QueueJobStatus;
   attemptCount: number;
   provider?: 'mock' | 'fashn';
+  submissionId?: string;
   jobToken?: string;
   lastError?: {
     code?: string;

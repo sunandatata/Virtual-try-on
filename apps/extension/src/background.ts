@@ -1,9 +1,41 @@
 import { extensionMessageSchema, MAX_IMAGE_BYTES } from '@virtual-try-on/shared';
 import type { ProductMetadata } from '@virtual-try-on/shared';
+import { processActiveBatchStep } from './lib/batch-engine';
+import { createGenerationBatch } from './lib/batch-storage';
 import { createCaptureDraft } from './lib/capture';
-import { saveImage } from './lib/storage';
+import { getSettings } from './lib/settings';
+import { getImage, saveImage } from './lib/storage';
 
 const MENU_ID = 'virtual-try-on-image';
+const BATCH_ALARM = 'virtual-try-on-batch';
+
+let activeBatchRun: Promise<void> | undefined;
+
+function scheduleBatchWake(delayMs: number): void {
+  chrome.alarms.create(BATCH_ALARM, { when: Date.now() + Math.max(250, delayMs) });
+}
+
+async function notifyBatchUpdated(): Promise<void> {
+  try {
+    await chrome.runtime.sendMessage({ type: 'BATCH_UPDATED' });
+  } catch {
+    // The side panel may be closed; durable IndexedDB state remains the source of truth.
+  }
+}
+
+function runBatchSafely(): Promise<void> {
+  activeBatchRun ??= processActiveBatchStep({
+    fetcher: fetch,
+    getSettings,
+    scheduleWake: scheduleBatchWake,
+    notify: notifyBatchUpdated,
+  })
+    .catch(() => scheduleBatchWake(30_000))
+    .finally(() => {
+      activeBatchRun = undefined;
+    });
+  return activeBatchRun;
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.contextMenus.removeAll().then(() => {
@@ -19,6 +51,10 @@ void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.windowId !== undefined) await chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === BATCH_ALARM) void runBatchSafely();
 });
 
 async function openPanel(tab?: chrome.tabs.Tab) {
@@ -121,5 +157,25 @@ chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     void storeRemoteGarment(parsed.data.image.src, parsed.data.metadata);
     sendResponse({ ok: true });
   }
+  if (parsed.data.type === 'START_BATCH') {
+    const itemIds = parsed.data.itemIds;
+    void (async () => {
+      try {
+        const person = await getImage('person');
+        if (!person) throw new Error('Add a body photo before starting a batch.');
+        const batch = await createGenerationBatch(itemIds, person.updatedAt);
+        sendResponse({ ok: true, batchId: batch.id });
+        await runBatchSafely();
+      } catch (error) {
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : 'Could not start this batch.',
+        });
+      }
+    })();
+    return true;
+  }
   return false;
 });
+
+void runBatchSafely();
