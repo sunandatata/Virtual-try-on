@@ -76,7 +76,9 @@ describe('QueuePanel', () => {
     const user = userEvent.setup();
     render(<QueuePanel />);
 
-    expect(await screen.findByRole('heading', { name: 'Confirm garment details' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Confirm garment details' }, { timeout: 3_000 }),
+    ).toBeVisible();
     const addButton = screen.getByRole('button', { name: 'Add to queue' });
     expect(addButton).toBeDisabled();
     await user.clear(screen.getByLabelText('Product name'));

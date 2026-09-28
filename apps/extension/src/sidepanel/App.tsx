@@ -19,6 +19,7 @@ import { deleteImage, getImage, saveImage } from '../lib/storage';
 import type { ImageSlot, StoredImage } from '../lib/storage';
 import { QueuePanel } from './QueuePanel';
 import { ComparisonPanel } from './ComparisonPanel';
+import { ProfilesPanel } from './ProfilesPanel';
 import { canGenerate, idleGeneration } from './state';
 import type { GenerationState } from './state';
 
@@ -111,7 +112,9 @@ export function App() {
   const [category, setCategory] = useState<GarmentCategory>('dress');
   const [generation, setGeneration] = useState<GenerationState>(idleGeneration);
   const [notice, setNotice] = useState('');
-  const [activeView, setActiveView] = useState<'queue' | 'compare' | 'try-on'>('queue');
+  const [activeView, setActiveView] = useState<'queue' | 'compare' | 'profiles' | 'try-on'>(
+    'queue',
+  );
   const [queueRefreshKey, setQueueRefreshKey] = useState(0);
   const personUrl = usePreview(person);
   const garmentUrl = usePreview(garment);
@@ -362,7 +365,14 @@ export function App() {
           className={activeView === 'try-on' ? 'active' : ''}
           onClick={() => setActiveView('try-on')}
         >
-          Single try-on
+          Try on
+        </button>
+        <button
+          aria-current={activeView === 'profiles' ? 'page' : undefined}
+          className={activeView === 'profiles' ? 'active' : ''}
+          onClick={() => setActiveView('profiles')}
+        >
+          Profiles
         </button>
       </nav>
 
@@ -370,6 +380,8 @@ export function App() {
         <QueuePanel refreshKey={queueRefreshKey} onSelectFromPage={selectFromPage} />
       ) : activeView === 'compare' ? (
         <ComparisonPanel />
+      ) : activeView === 'profiles' ? (
+        <ProfilesPanel />
       ) : !person || !settings.consent ? (
         <section className="card welcome">
           <p className="eyebrow">Welcome</p>
