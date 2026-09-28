@@ -6,6 +6,7 @@ import {
   listBodyProfiles,
   replaceBodyProfileImage,
   setDefaultBodyProfile,
+  setBodyProfileConsent,
   updateBodyProfileDetails,
 } from './body-profile-storage';
 import { clearAllLocalData } from './storage';
@@ -37,12 +38,21 @@ describe('body profile repository', () => {
     });
 
     expect(front.isDefault).toBe(true);
+    expect(front.consent).toBe(false);
     expect(formal.description).toBe('formal event');
     await setDefaultBodyProfile(formal.id);
     expect(await getDefaultBodyProfile()).toMatchObject({ id: formal.id });
     expect((await listBodyProfiles()).find((profile) => profile.id === front.id)?.isDefault).toBe(
       false,
     );
+  });
+
+  it('stores consent per profile and resets it when the photo changes', async () => {
+    const profile = await createBodyProfile({ profileName: 'Front', image: image('front') });
+    expect(await setBodyProfileConsent(profile.id, true)).toMatchObject({ consent: true });
+    expect(await replaceBodyProfileImage(profile.id, image('replacement'))).toMatchObject({
+      consent: false,
+    });
   });
 
   it('renames and replaces a profile image', async () => {

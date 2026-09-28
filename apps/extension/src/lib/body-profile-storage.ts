@@ -50,7 +50,9 @@ export async function createBodyProfile(input: {
     ...input.image,
     createdAt: now,
     updatedAt: now,
+    imageUpdatedAt: now,
     isDefault: makeDefault,
+    consent: false,
   };
   if (makeDefault) {
     await Promise.all(
@@ -90,10 +92,29 @@ export async function replaceBodyProfileImage(
   image: BodyProfileImage,
 ): Promise<BodyProfile> {
   const database = await openDatabase();
+  const transaction = database.transaction(['bodyProfiles', 'batches'], 'readwrite');
+  const profileStore = transaction.objectStore('bodyProfiles');
+  const current = await profileStore.get(id);
+  if (!current) throw new Error('Body profile not found.');
+  const batches = await transaction.objectStore('batches').getAll();
+  if (
+    batches.some((batch) => batch.profileId === id && ['queued', 'running'].includes(batch.status))
+  ) {
+    throw new Error('This profile is being used by an active generation.');
+  }
+  const now = Date.now();
+  const updated = { ...current, ...image, consent: false, updatedAt: now, imageUpdatedAt: now };
+  await profileStore.put(updated);
+  await transaction.done;
+  return updated;
+}
+
+export async function setBodyProfileConsent(id: string, consent: boolean): Promise<BodyProfile> {
+  const database = await openDatabase();
   const transaction = database.transaction('bodyProfiles', 'readwrite');
   const current = await transaction.store.get(id);
   if (!current) throw new Error('Body profile not found.');
-  const updated = { ...current, ...image, updatedAt: Date.now() };
+  const updated = { ...current, consent, updatedAt: Date.now() };
   await transaction.store.put(updated);
   await transaction.done;
   return updated;

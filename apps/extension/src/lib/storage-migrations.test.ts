@@ -71,7 +71,7 @@ describe('legacy IndexedDB migration', () => {
     const secondRun = await migrateLegacyGarmentToQueue();
     const items = await listQueueItems();
 
-    expect(DATABASE_VERSION).toBe(5);
+    expect(DATABASE_VERSION).toBe(6);
     expect(firstRun).toMatchObject({ status: 'migrated', queueItemId: items[0]?.id });
     expect(secondRun).toMatchObject({ status: 'already-migrated', queueItemId: items[0]?.id });
     expect(items).toHaveLength(1);
@@ -105,7 +105,9 @@ describe('legacy IndexedDB migration', () => {
       description: 'Migrated saved body photo',
       imageName: 'body.png',
       isDefault: true,
+      consent: false,
       createdAt: 124,
+      imageUpdatedAt: 124,
     });
     expect(await getImage('person')).toMatchObject({ name: 'body.png' });
   });

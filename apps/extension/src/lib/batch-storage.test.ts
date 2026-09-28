@@ -9,7 +9,11 @@ import {
 import { createQueueItem, getQueueItem, updateQueueItem } from './queue-storage';
 import type { CreateQueueItemInput } from './queue-storage';
 import { clearAllLocalData } from './storage';
-import { createBodyProfile, deleteBodyProfile } from './body-profile-storage';
+import {
+  createBodyProfile,
+  deleteBodyProfile,
+  replaceBodyProfileImage,
+} from './body-profile-storage';
 
 let profile: Awaited<ReturnType<typeof createBodyProfile>>;
 
@@ -96,6 +100,15 @@ describe('generation batch storage', () => {
     await expect(deleteBodyProfile(profile.id)).rejects.toThrow(
       'being used by an active generation',
     );
+    await expect(
+      replaceBodyProfileImage(profile.id, {
+        blob: new Blob(['replacement']),
+        imageName: 'replacement.png',
+        mime: 'image/png',
+        width: 800,
+        height: 1200,
+      }),
+    ).rejects.toThrow('being used by an active generation');
   });
 
   it('persists progress and exposes the oldest active batch for recovery', async () => {

@@ -134,6 +134,16 @@ label:has(input:focus-visible) {
 .profile-actions .danger {
   color: #994b46;
 }
+.profile-actions .profile-consent {
+  flex-basis: 100%;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #594b50;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
 .profile-replace input {
   position: absolute;
   width: 1px;

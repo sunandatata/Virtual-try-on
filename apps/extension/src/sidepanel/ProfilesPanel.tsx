@@ -6,6 +6,7 @@ import {
   listBodyProfiles,
   replaceBodyProfileImage,
   setDefaultBodyProfile,
+  setBodyProfileConsent,
   updateBodyProfileDetails,
 } from '../lib/body-profile-storage';
 import type { BodyProfile, BodyProfileImage } from '../lib/body-profile-storage';
@@ -95,6 +96,17 @@ function ProfileCard({ profile, onChanged }: { profile: BodyProfile; onChanged: 
                 Make default
               </button>
             )}
+            <label className="profile-consent">
+              <input
+                type="checkbox"
+                checked={profile.consent}
+                onChange={async (event) => {
+                  await setBodyProfileConsent(profile.id, event.target.checked);
+                  onChanged();
+                }}
+              />
+              Allow generation with this photo
+            </label>
             <label className="profile-replace">
               Replace photo
               <input

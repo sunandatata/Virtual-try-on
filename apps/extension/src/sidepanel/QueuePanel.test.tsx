@@ -10,7 +10,7 @@ import {
 import type { CaptureDraft, CreateQueueItemInput } from '../lib/queue-storage';
 import { clearAllLocalData, saveImage } from '../lib/storage';
 import { listCollections } from '../lib/collection-storage';
-import { createBodyProfile } from '../lib/body-profile-storage';
+import { createBodyProfile, setBodyProfileConsent } from '../lib/body-profile-storage';
 import { QueuePanel } from './QueuePanel';
 
 function draft(overrides: Partial<CaptureDraft> = {}): CaptureDraft {
@@ -209,6 +209,7 @@ describe('QueuePanel', () => {
         height: 1200,
       },
     });
+    await setBodyProfileConsent(profile.id, true);
     await saveImage({
       slot: 'person',
       blob: new Blob(['person'], { type: 'image/png' }),

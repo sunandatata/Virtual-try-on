@@ -56,6 +56,14 @@ describe('ProfilesPanel', () => {
 
     const frontCard = (await screen.findByText('Front')).closest('article')!;
     expect(within(frontCard).getByText('Default')).toBeVisible();
+    await user.click(
+      within(frontCard).getByRole('checkbox', { name: 'Allow generation with this photo' }),
+    );
+    await waitFor(async () =>
+      expect((await listBodyProfiles()).find((profile) => profile.id === front.id)?.consent).toBe(
+        true,
+      ),
+    );
     const sideCard = screen.getByText('Side').closest('article')!;
     await user.click(within(sideCard).getByRole('button', { name: 'Make default' }));
     await waitFor(async () => expect((await getDefaultBodyProfile())?.profileName).toBe('Side'));

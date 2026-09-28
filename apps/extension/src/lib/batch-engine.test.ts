@@ -5,7 +5,7 @@ import { createGenerationBatch, getGenerationBatch, updateGenerationBatch } from
 import { createQueueItem, getQueueItem, updateQueueItem } from './queue-storage';
 import type { CreateQueueItemInput } from './queue-storage';
 import { clearAllLocalData, saveImage } from './storage';
-import { createBodyProfile } from './body-profile-storage';
+import { createBodyProfile, setBodyProfileConsent } from './body-profile-storage';
 import type { BodyProfile } from './body-profile-storage';
 
 function queueInput(index: number): CreateQueueItemInput {
@@ -36,7 +36,7 @@ async function savePerson(): Promise<BodyProfile> {
     height: 1200,
     updatedAt: 99,
   });
-  return createBodyProfile({
+  const profile = await createBodyProfile({
     profileName: 'Front',
     image: {
       blob: new Blob(['person'], { type: 'image/png' }),
@@ -47,6 +47,7 @@ async function savePerson(): Promise<BodyProfile> {
     },
     now: 99,
   });
+  return setBodyProfileConsent(profile.id, true);
 }
 
 function dependencies(fetcher: typeof fetch): BatchEngineDependencies {

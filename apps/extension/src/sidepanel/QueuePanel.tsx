@@ -645,10 +645,11 @@ export function QueuePanel({
     setBatchError('');
     try {
       if (!profileId) throw new Error('Create or choose a body profile before generating.');
-      const settings = await getSettings();
-      if (!settings.consent) {
-        throw new Error('Confirm body-photo processing consent in Single try-on first.');
+      const profile = profiles.find((candidate) => candidate.id === profileId);
+      if (!profile?.consent) {
+        throw new Error('Allow generation for the selected body profile before continuing.');
       }
+      const settings = await getSettings();
       const origin = new URL(settings.apiUrl).origin;
       const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
       if (!granted) throw new Error('Backend access was not granted.');

@@ -99,7 +99,7 @@ export async function processActiveBatchStep(dependencies: BatchEngineDependenci
   const batch = await getActiveGenerationBatch();
   if (!batch) return;
   const person = batch.profileId ? await getBodyProfile(batch.profileId) : undefined;
-  if (!person || person.updatedAt !== batch.personImageUpdatedAt) {
+  if (!person || person.imageUpdatedAt !== batch.personImageUpdatedAt) {
     const unfinished = batch.itemIds.filter(
       (id) => !batch.completedItemIds.includes(id) && !batch.failedItemIds.includes(id),
     );
@@ -111,6 +111,24 @@ export async function processActiveBatchStep(dependencies: BatchEngineDependenci
           message: 'The body photo changed or was removed before this job could run.',
           retryable: true,
           code: 'BODY_PROFILE_CHANGED',
+        },
+        dependencies,
+      );
+    }
+    return;
+  }
+  if (!person.consent) {
+    const unfinished = batch.itemIds.filter(
+      (id) => !batch.completedItemIds.includes(id) && !batch.failedItemIds.includes(id),
+    );
+    for (const itemId of unfinished) {
+      await failItem(
+        batch,
+        itemId,
+        {
+          message: 'Permission to use this body profile was withdrawn.',
+          retryable: true,
+          code: 'BODY_PROFILE_CONSENT_REQUIRED',
         },
         dependencies,
       );
@@ -172,15 +190,6 @@ export async function processActiveBatchStep(dependencies: BatchEngineDependenci
   }
 
   const settings = await dependencies.getSettings();
-  if (!settings.consent) {
-    await failItem(
-      currentBatch,
-      itemId,
-      { message: 'Body-photo processing consent is required.', retryable: true },
-      dependencies,
-    );
-    return;
-  }
   const origin = new URL(settings.apiUrl).origin;
   const headers: Record<string, string> = settings.accessCode
     ? { 'X-Access-Code': settings.accessCode }

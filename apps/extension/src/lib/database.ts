@@ -133,7 +133,9 @@ export type BodyProfile = {
   height: number;
   createdAt: number;
   updatedAt: number;
+  imageUpdatedAt: number;
   isDefault: boolean;
+  consent: boolean;
 };
 
 interface VirtualTryOnDatabase extends DBSchema {
@@ -195,13 +197,13 @@ interface VirtualTryOnDatabase extends DBSchema {
 }
 
 export const DATABASE_NAME = 'virtual-try-on';
-export const DATABASE_VERSION = 5;
+export const DATABASE_VERSION = 6;
 
 let databasePromise: Promise<IDBPDatabase<VirtualTryOnDatabase>> | undefined;
 
 export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
   databasePromise ??= openDB<VirtualTryOnDatabase>(DATABASE_NAME, DATABASE_VERSION, {
-    upgrade(database) {
+    async upgrade(database, oldVersion, _newVersion, transaction) {
       if (!database.objectStoreNames.contains('images')) {
         database.createObjectStore('images', { keyPath: 'slot' });
       }
@@ -236,6 +238,17 @@ export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
       if (!database.objectStoreNames.contains('bodyProfiles')) {
         const profiles = database.createObjectStore('bodyProfiles', { keyPath: 'id' });
         profiles.createIndex('by-created-at', 'createdAt');
+      }
+      if (oldVersion > 0 && oldVersion < 6) {
+        let cursor = await transaction.objectStore('bodyProfiles').openCursor();
+        while (cursor) {
+          await cursor.update({
+            ...cursor.value,
+            imageUpdatedAt: cursor.value.updatedAt,
+            consent: false,
+          });
+          cursor = await cursor.continue();
+        }
       }
     },
     blocking() {
