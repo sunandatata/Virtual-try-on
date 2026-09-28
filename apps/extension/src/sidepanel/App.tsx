@@ -14,6 +14,7 @@ import type { ExtensionSettings } from '../lib/settings';
 import { migrateLegacyGarmentToQueue } from '../lib/storage-migrations';
 import { deleteImage, getImage, saveImage } from '../lib/storage';
 import type { ImageSlot, StoredImage } from '../lib/storage';
+import { QueuePanel } from './QueuePanel';
 import { canGenerate, idleGeneration } from './state';
 import type { GenerationState } from './state';
 
@@ -106,6 +107,8 @@ export function App() {
   const [category, setCategory] = useState<GarmentCategory>('dress');
   const [generation, setGeneration] = useState<GenerationState>(idleGeneration);
   const [notice, setNotice] = useState('');
+  const [activeView, setActiveView] = useState<'queue' | 'try-on'>('queue');
+  const [queueRefreshKey, setQueueRefreshKey] = useState(0);
   const personUrl = usePreview(person);
   const garmentUrl = usePreview(garment);
   const resultUrl = usePreview(result);
@@ -222,6 +225,8 @@ export function App() {
       if (parsed.data.type === 'GARMENT_BYTES') {
         void getImage('garment').then((next) => {
           setGarment(next);
+          setActiveView('queue');
+          setQueueRefreshKey((value) => value + 1);
           setNotice(
             next ? 'Garment selected from the page.' : 'Could not read the selected garment.',
           );
@@ -261,8 +266,13 @@ export function App() {
       ok: boolean;
       error?: string;
     };
-    if (!response?.ok) setNotice(response?.error ?? 'Could not start garment selection.');
-    else setNotice('Selection mode is active on the shopping page.');
+    if (!response?.ok) {
+      const reason = response?.error ?? 'Could not start garment selection.';
+      setNotice(reason);
+      return reason;
+    }
+    setNotice('Selection mode is active on the shopping page.');
+    return undefined;
   };
 
   const generate = async () => {
@@ -328,7 +338,26 @@ export function App() {
         </button>
       </header>
 
-      {!person || !settings.consent ? (
+      <nav className="view-tabs" aria-label="Virtual Try-On sections">
+        <button
+          aria-current={activeView === 'queue' ? 'page' : undefined}
+          className={activeView === 'queue' ? 'active' : ''}
+          onClick={() => setActiveView('queue')}
+        >
+          Queue
+        </button>
+        <button
+          aria-current={activeView === 'try-on' ? 'page' : undefined}
+          className={activeView === 'try-on' ? 'active' : ''}
+          onClick={() => setActiveView('try-on')}
+        >
+          Single try-on
+        </button>
+      </nav>
+
+      {activeView === 'queue' ? (
+        <QueuePanel refreshKey={queueRefreshKey} onSelectFromPage={selectFromPage} />
+      ) : !person || !settings.consent ? (
         <section className="card welcome">
           <p className="eyebrow">Welcome</p>
           <h2>See the piece on you</h2>
@@ -473,7 +502,12 @@ export function App() {
               image={garment}
               onImage={(next) => {
                 setGarment(next);
-                if (next) void createCaptureDraft({ image: next });
+                if (next) {
+                  void createCaptureDraft({ image: next }).then(() => {
+                    setActiveView('queue');
+                    setQueueRefreshKey((value) => value + 1);
+                  });
+                }
               }}
             />
             <p className="hint">A front-facing image with one unobstructed garment works best.</p>
