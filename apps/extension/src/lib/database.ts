@@ -1,4 +1,4 @@
-import type { GarmentCategory } from '@virtual-try-on/shared';
+import type { GarmentCategory, ProductMetadata } from '@virtual-try-on/shared';
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
 
@@ -88,6 +88,7 @@ export type CaptureDraft = {
   category: GarmentCategory | null;
   imageFingerprint: string;
   duplicateKey: string;
+  metadata?: ProductMetadata;
   createdAt: number;
   updatedAt: number;
 };

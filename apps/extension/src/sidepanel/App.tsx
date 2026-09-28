@@ -8,6 +8,7 @@ import {
 import type { GarmentCategory } from '@virtual-try-on/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { processImage } from '../lib/images';
+import { createCaptureDraft } from '../lib/capture';
 import { getSettings, saveSettings } from '../lib/settings';
 import type { ExtensionSettings } from '../lib/settings';
 import { migrateLegacyGarmentToQueue } from '../lib/storage-migrations';
@@ -470,7 +471,10 @@ export function App() {
               label="Upload garment screenshot"
               slot="garment"
               image={garment}
-              onImage={setGarment}
+              onImage={(next) => {
+                setGarment(next);
+                if (next) void createCaptureDraft({ image: next });
+              }}
             />
             <p className="hint">A front-facing image with one unobstructed garment works best.</p>
             {notice && <p className="notice">{notice}</p>}

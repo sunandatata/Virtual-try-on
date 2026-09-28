@@ -1,5 +1,6 @@
 import { extensionMessageSchema, MAX_IMAGE_BYTES } from '@virtual-try-on/shared';
 import type { ProductMetadata } from '@virtual-try-on/shared';
+import { createCaptureDraft } from './lib/capture';
 import { saveImage } from './lib/storage';
 
 const MENU_ID = 'virtual-try-on-image';
@@ -24,7 +25,11 @@ async function openPanel(tab?: chrome.tabs.Tab) {
   if (tab?.windowId !== undefined) await chrome.sidePanel.open({ windowId: tab.windowId });
 }
 
-async function storeRemoteGarment(src: string, metadata?: ProductMetadata): Promise<void> {
+async function storeRemoteGarment(
+  src: string,
+  metadata?: ProductMetadata,
+  sourcePageUrl?: string,
+): Promise<void> {
   try {
     const localFixture = src.startsWith(chrome.runtime.getURL('fixture/'));
     if (!/^https?:/i.test(src) && !src.startsWith('data:') && !localFixture) {
@@ -43,7 +48,7 @@ async function storeRemoteGarment(src: string, metadata?: ProductMetadata): Prom
     const width = bitmap.width;
     const height = bitmap.height;
     bitmap.close();
-    await saveImage({
+    const storedImage = {
       slot: 'garment',
       blob,
       name: 'selected-garment',
@@ -51,12 +56,20 @@ async function storeRemoteGarment(src: string, metadata?: ProductMetadata): Prom
       width,
       height,
       updatedAt: Date.now(),
+    } as const;
+    await saveImage(storedImage);
+    const draft = await createCaptureDraft({
+      image: storedImage,
+      sourceImageUrl: src,
+      sourcePageUrl: metadata?.sourceUrl ?? sourcePageUrl,
+      metadata,
     });
     await chrome.storage.local.set({ garmentSelectionError: '' });
     await chrome.runtime.sendMessage({
       type: 'GARMENT_BYTES',
       dataUrl: '',
       sourceUrl: src,
+      draftId: draft.id,
       metadata,
     });
   } catch (error) {
@@ -69,7 +82,7 @@ async function storeRemoteGarment(src: string, metadata?: ProductMetadata): Prom
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== MENU_ID || !info.srcUrl) return;
   await openPanel(tab);
-  await storeRemoteGarment(info.srcUrl);
+  await storeRemoteGarment(info.srcUrl, undefined, info.pageUrl ?? tab?.url);
 });
 
 chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {

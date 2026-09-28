@@ -102,6 +102,7 @@ export const extensionMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('GARMENT_BYTES'),
     dataUrl: z.string(),
     sourceUrl: z.string(),
+    draftId: z.string().optional(),
     metadata: productMetadataSchema.optional(),
   }),
   z.object({ type: z.literal('GARMENT_FETCH_FAILED'), reason: z.string() }),
