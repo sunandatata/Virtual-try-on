@@ -1,58 +1,38 @@
-export type ImageSlot = 'person' | 'garment' | 'result';
+import { openDatabase } from './database';
+import type { ImageSlot, StoredImage } from './database';
 
-export type StoredImage = {
-  slot: ImageSlot;
-  blob: Blob;
-  name: string;
-  mime: string;
-  width: number;
-  height: number;
-  updatedAt: number;
-};
+export type { ImageSlot, StoredImage } from './database';
 
-const DB_NAME = 'virtual-try-on';
-const DB_VERSION = 1;
-const STORE = 'images';
-
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE)) {
-        request.result.createObjectStore(STORE, { keyPath: 'slot' });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () =>
-      reject(request.error ?? new Error('Could not open local image storage.'));
-  });
+export async function saveImage(image: StoredImage) {
+  return (await openDatabase()).put('images', image);
 }
 
-async function transaction<T>(
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T> {
-  const db = await openDatabase();
-  return await new Promise<T>((resolve, reject) => {
-    const tx = db.transaction(STORE, mode);
-    const request = action(tx.objectStore(STORE));
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Local storage operation failed.'));
-    tx.oncomplete = () => db.close();
-    tx.onerror = () => reject(tx.error ?? new Error('Local storage transaction failed.'));
-  });
+export async function getImage(slot: ImageSlot) {
+  return (await openDatabase()).get('images', slot);
 }
 
-export const saveImage = (image: StoredImage) =>
-  transaction('readwrite', (store) => store.put(image));
-export const getImage = (slot: ImageSlot) =>
-  transaction<StoredImage | undefined>('readonly', (store) => store.get(slot));
-export const deleteImage = (slot: ImageSlot) =>
-  transaction('readwrite', (store) => store.delete(slot));
-export const clearImages = () => transaction('readwrite', (store) => store.clear());
+export async function deleteImage(slot: ImageSlot) {
+  return (await openDatabase()).delete('images', slot);
+}
+
+export async function clearImages() {
+  return (await openDatabase()).clear('images');
+}
 
 export async function clearAllLocalData(): Promise<void> {
-  await clearImages();
+  const database = await openDatabase();
+  const transaction = database.transaction(
+    ['images', 'queueItems', 'assets', 'captureDrafts', 'metadata'],
+    'readwrite',
+  );
+  await Promise.all([
+    transaction.objectStore('images').clear(),
+    transaction.objectStore('queueItems').clear(),
+    transaction.objectStore('assets').clear(),
+    transaction.objectStore('captureDrafts').clear(),
+    transaction.objectStore('metadata').clear(),
+    transaction.done,
+  ]);
   if (typeof chrome !== 'undefined' && chrome.storage) {
     await Promise.all([chrome.storage.local.clear(), chrome.storage.session?.clear()]);
   }
