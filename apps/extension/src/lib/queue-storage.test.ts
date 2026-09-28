@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { clearAllLocalData } from './storage';
 import {
   createQueueItem,
+  commitCaptureDraft,
   deleteCaptureDraft,
   deleteQueueItem,
   findDuplicateQueueItems,
@@ -192,5 +193,87 @@ describe('try-on queue repository', () => {
     expect(await getCaptureDraft('first')).toMatchObject({ id: 'first' });
     await deleteCaptureDraft('first');
     expect(await getCaptureDraft('first')).toBeUndefined();
+  });
+
+  it('atomically commits a reviewed capture draft to the ready queue', async () => {
+    const draft: CaptureDraft = {
+      id: 'review-me',
+      blob: new Blob(['reviewed garment'], { type: 'image/png' }),
+      name: 'review.png',
+      mime: 'image/png',
+      width: 700,
+      height: 1000,
+      sourcePageUrl: 'https://shop.example/review',
+      productName: 'Suggested name',
+      store: 'Suggested store',
+      category: null,
+      imageFingerprint: 'review-fingerprint',
+      duplicateKey: 'review-duplicate-key',
+      createdAt: 100,
+      updatedAt: 100,
+    };
+    await saveCaptureDraft(draft);
+
+    const item = await commitCaptureDraft({
+      draftId: draft.id,
+      productName: 'Edited name',
+      store: 'Edited store',
+      displayedPrice: '$55',
+      color: 'Green',
+      category: 'dress',
+      now: 200,
+    });
+
+    expect(item).toMatchObject({
+      productName: 'Edited name',
+      store: 'Edited store',
+      sourceUrl: draft.sourcePageUrl,
+      displayedPrice: '$55',
+      color: 'Green',
+      category: 'dress',
+      status: 'ready',
+    });
+    expect(await getCaptureDraft(draft.id)).toBeUndefined();
+    expect(await getQueueAssetByKind(item.id, 'garment')).toMatchObject({
+      name: 'review.png',
+      width: 700,
+    });
+  });
+
+  it('requires explicit confirmation before committing a duplicate variant', async () => {
+    const existing = await createQueueItem(queueInput());
+    const draft: CaptureDraft = {
+      id: 'duplicate-draft',
+      blob: new Blob(['garment'], { type: 'image/png' }),
+      name: 'duplicate.png',
+      mime: 'image/png',
+      width: 800,
+      height: 1200,
+      productName: 'Duplicate',
+      store: 'Example Store',
+      category: null,
+      imageFingerprint: existing.imageFingerprint,
+      duplicateKey: existing.duplicateKey,
+      createdAt: 200,
+      updatedAt: 200,
+    };
+    await saveCaptureDraft(draft);
+    const reviewed = {
+      draftId: draft.id,
+      productName: draft.productName,
+      store: draft.store,
+      category: 'dress' as const,
+      now: 300,
+    };
+
+    await expect(commitCaptureDraft(reviewed)).rejects.toThrow(
+      'Duplicate queue item requires confirmation.',
+    );
+    expect(await getCaptureDraft(draft.id)).toBeDefined();
+    const variant = await commitCaptureDraft({
+      ...reviewed,
+      duplicateOverrideOf: existing.id,
+    });
+    expect(variant.duplicateOverrideOf).toBe(existing.id);
   });
 });

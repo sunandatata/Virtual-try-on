@@ -36,6 +36,16 @@ export type CreateQueueItemInput = Pick<
   now?: number;
 };
 
+export type CommitCaptureDraftInput = Pick<
+  QueueItem,
+  'productName' | 'store' | 'displayedPrice' | 'color'
+> & {
+  draftId: string;
+  category: NonNullable<QueueItem['category']>;
+  duplicateOverrideOf?: string;
+  now?: number;
+};
+
 function createId(prefix: string): string {
   const uuid = globalThis.crypto?.randomUUID?.();
   return `${prefix}-${uuid ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
@@ -88,6 +98,68 @@ export async function createQueueItem(input: CreateQueueItemInput): Promise<Queu
     updatedAt: now,
   };
   await Promise.all([queueStore.add(item), transaction.objectStore('assets').add(asset)]);
+  await transaction.done;
+  return item;
+}
+
+export async function commitCaptureDraft(input: CommitCaptureDraftInput): Promise<QueueItem> {
+  const database = await openDatabase();
+  const transaction = database.transaction(['captureDrafts', 'queueItems', 'assets'], 'readwrite');
+  const draft = await transaction.objectStore('captureDrafts').get(input.draftId);
+  if (!draft) throw new Error('Capture draft not found.');
+
+  const queueStore = transaction.objectStore('queueItems');
+  const duplicateCandidates = await queueStore.index('by-duplicate-key').getAll(draft.duplicateKey);
+  if (duplicateCandidates.length > 0) {
+    const confirmed = duplicateCandidates.some(
+      (candidate) => candidate.id === input.duplicateOverrideOf,
+    );
+    if (!confirmed) throw new Error('Duplicate queue item requires confirmation.');
+  }
+
+  const now = input.now ?? Date.now();
+  const id = createId('queue');
+  const garmentAssetId = createId('asset');
+  const lastItem = await queueStore.index('by-sort-index').openCursor(null, 'prev');
+  const item: QueueItem = {
+    id,
+    garmentAssetId,
+    productName: input.productName,
+    store: input.store,
+    sourceUrl: draft.sourcePageUrl,
+    displayedPrice: input.displayedPrice,
+    color: input.color,
+    category: input.category,
+    addedAt: now,
+    updatedAt: now,
+    sortIndex: (lastItem?.value.sortIndex ?? -1) + 1,
+    status: 'ready',
+    job: idleJob(now),
+    favorite: false,
+    collectionIds: [],
+    notes: '',
+    winner: false,
+    imageFingerprint: draft.imageFingerprint,
+    duplicateKey: draft.duplicateKey,
+    duplicateOverrideOf: input.duplicateOverrideOf,
+  };
+  const asset: QueueAsset = {
+    id: garmentAssetId,
+    ownerId: id,
+    kind: 'garment',
+    blob: draft.blob,
+    name: draft.name,
+    mime: draft.mime,
+    width: draft.width,
+    height: draft.height,
+    createdAt: draft.createdAt,
+    updatedAt: now,
+  };
+  await Promise.all([
+    queueStore.add(item),
+    transaction.objectStore('assets').add(asset),
+    transaction.objectStore('captureDrafts').delete(draft.id),
+  ]);
   await transaction.done;
   return item;
 }
