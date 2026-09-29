@@ -30,7 +30,7 @@ import {
   setQueueItemFavorite,
   updateQueueItem,
 } from '../lib/queue-storage';
-import type { CaptureDraft, QueueItem, QueueStatus } from '../lib/queue-storage';
+import type { CaptureDraft, QueueAsset, QueueItem, QueueStatus } from '../lib/queue-storage';
 
 type QueueFilter = 'all' | QueueStatus;
 type CollectionFilter = 'all' | 'favorites' | string;
@@ -160,22 +160,40 @@ function CollectionManager({
   );
 }
 
-function useAssetPreview(itemId: string): string {
-  const [url, setUrl] = useState('');
+function useQueueCardAssets(itemId: string, status: QueueStatus) {
+  const [garmentUrl, setGarmentUrl] = useState('');
+  const [resultUrl, setResultUrl] = useState('');
+  const [resultAsset, setResultAsset] = useState<QueueAsset | undefined>();
+
   useEffect(() => {
     let active = true;
-    let objectUrl = '';
-    void getQueueAssetByKind(itemId, 'garment').then((asset) => {
-      if (!active || !asset) return;
-      objectUrl = URL.createObjectURL(asset.blob);
-      setUrl(objectUrl);
+    let garmentObjectUrl = '';
+    let resultObjectUrl = '';
+
+    void Promise.all([
+      getQueueAssetByKind(itemId, 'garment'),
+      status === 'completed' ? getQueueAssetByKind(itemId, 'result') : Promise.resolve(undefined),
+    ]).then(([garment, result]) => {
+      if (!active) return;
+      if (garment) {
+        garmentObjectUrl = URL.createObjectURL(garment.blob);
+        setGarmentUrl(garmentObjectUrl);
+      }
+      if (result) {
+        resultObjectUrl = URL.createObjectURL(result.blob);
+        setResultUrl(resultObjectUrl);
+        setResultAsset(result);
+      }
     });
+
     return () => {
       active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (garmentObjectUrl) URL.revokeObjectURL(garmentObjectUrl);
+      if (resultObjectUrl) URL.revokeObjectURL(resultObjectUrl);
     };
-  }, [itemId]);
-  return url;
+  }, [itemId, status]);
+
+  return { garmentUrl, resultUrl, resultAsset };
 }
 
 function DraftPreview({ draft }: { draft: CaptureDraft }) {
@@ -382,12 +400,27 @@ function QueueCard({
   selectionLocked: boolean;
   collections: GarmentCollection[];
 }) {
-  const imageUrl = useAssetPreview(item.id);
+  const { garmentUrl, resultUrl, resultAsset } = useQueueCardAssets(item.id, item.status);
   const [editing, setEditing] = useState(false);
   const [organizing, setOrganizing] = useState(false);
+  const [viewPreview, setViewPreview] = useState(false);
   const [draft, setDraft] = useState(item);
 
   useEffect(() => setDraft(item), [item]);
+
+  const isDemo = Boolean(
+    item.job.isDemo ||
+    item.job.provider === 'mock' ||
+    resultAsset?.name.includes('demo') ||
+    resultAsset?.mime.includes('svg'),
+  );
+
+  const downloadFilename = `${
+    item.productName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'tryon'
+  }-tryon.${resultAsset?.mime.includes('svg') ? 'svg' : 'png'}`;
 
   const saveEdits = async () => {
     await updateQueueItem(item.id, (current) => ({
@@ -419,8 +452,19 @@ function QueueCard({
             aria-label={`Select ${item.productName} for generation`}
           />
         </label>
-        <div className="queue-thumb">
-          {imageUrl && <img src={imageUrl} alt={`${item.productName} garment`} />}
+        <div
+          className={`queue-thumb ${item.status === 'completed' && resultUrl ? 'queue-result-thumb' : ''}`}
+          title={
+            item.status === 'completed' && resultUrl
+              ? `${item.productName} try-on result`
+              : `${item.productName} garment`
+          }
+        >
+          {item.status === 'completed' && resultUrl ? (
+            <img src={resultUrl} alt={`${item.productName} try-on result`} />
+          ) : garmentUrl ? (
+            <img src={garmentUrl} alt={`${item.productName} garment`} />
+          ) : null}
         </div>
         <div className="queue-copy">
           <div className="queue-title-row">
@@ -442,9 +486,9 @@ function QueueCard({
             {[item.displayedPrice, item.color].filter(Boolean).join(' · ') || 'Details pending'}
           </span>
           <span className={`status-badge status-${item.status}`}>{item.status}</span>
-          {item.status === 'completed' && item.job.provider && (
-            <span className={item.job.provider === 'mock' ? 'provider-demo' : 'provider-real'}>
-              {item.job.provider === 'mock' ? 'Demo · not AI' : 'FASHN result'}
+          {item.status === 'completed' && (
+            <span className={isDemo ? 'provider-demo' : 'provider-real'}>
+              {isDemo ? 'Simulated · Demo (not AI)' : 'FASHN result'}
             </span>
           )}
           {item.job.lastError && <span className="queue-error">{item.job.lastError.message}</span>}
@@ -530,6 +574,16 @@ function QueueCard({
         </fieldset>
       )}
       <div className="queue-actions" aria-label={`Actions for ${item.productName}`}>
+        {item.status === 'completed' && resultUrl && (
+          <>
+            <button onClick={() => setViewPreview((value) => !value)} aria-expanded={viewPreview}>
+              {viewPreview ? 'Hide preview' : 'View result'}
+            </button>
+            <a className="queue-download-link" href={resultUrl} download={downloadFilename}>
+              Download
+            </a>
+          </>
+        )}
         {item.sourceUrl && (
           <a href={item.sourceUrl} target="_blank" rel="noreferrer">
             Open store
@@ -564,6 +618,28 @@ function QueueCard({
           Remove
         </button>
       </div>
+      {viewPreview && item.status === 'completed' && resultUrl && (
+        <div className="queue-result-drawer" aria-label={`${item.productName} try-on preview`}>
+          <div className="queue-result-drawer-images">
+            <figure>
+              {garmentUrl && <img src={garmentUrl} alt={`${item.productName} garment`} />}
+              <figcaption>Original garment</figcaption>
+            </figure>
+            <figure>
+              <img src={resultUrl} alt={`${item.productName} try-on result`} />
+              <figcaption>{isDemo ? 'Simulated result (Demo)' : 'Generated try-on'}</figcaption>
+            </figure>
+          </div>
+          <div className="queue-result-drawer-actions">
+            <a className="button secondary no-margin" href={resultUrl} download={downloadFilename}>
+              Download try-on
+            </a>
+            <button className="link" onClick={() => setViewPreview(false)}>
+              Close preview
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

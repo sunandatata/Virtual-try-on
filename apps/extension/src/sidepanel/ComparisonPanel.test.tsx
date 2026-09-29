@@ -122,4 +122,33 @@ describe('ComparisonPanel', () => {
     );
     expect(await screen.findByText('Select at least two results to compare.')).toBeVisible();
   });
+
+  it('displays a single completed result with simulated demo badge when only one try-on exists', async () => {
+    const item = await createQueueItem(input(1));
+    await saveQueueResult(
+      item.id,
+      {
+        blob: new Blob(['<svg><text>DEMO RESULT</text></svg>'], { type: 'image/svg+xml' }),
+        name: 'demo-result.svg',
+        mime: 'image/svg+xml',
+        width: 600,
+        height: 900,
+      },
+      { isDemo: true, provider: 'mock' },
+    );
+
+    render(<ComparisonPanel />);
+
+    expect(
+      await screen.findByText(
+        'Complete at least two try-ons to compare side by side. Here is your finished result:',
+      ),
+    ).toBeVisible();
+    expect(await screen.findByText('Simulated · Demo')).toBeVisible();
+    expect(await screen.findByAltText('Garment 1 try-on result')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Download result' })).toHaveAttribute(
+      'download',
+      'demo-result.svg',
+    );
+  });
 });

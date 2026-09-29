@@ -860,6 +860,16 @@ p {
   height: 100%;
   object-fit: contain;
 }
+.queue-result-thumb {
+  position: relative;
+  border: 1.5px solid #28714c;
+  background: #eee7e0;
+}
+.queue-result-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 .queue-copy {
   min-width: 0;
   display: grid;
@@ -950,9 +960,44 @@ p {
   color: #b2a8a7;
   cursor: not-allowed;
 }
+.queue-actions .queue-download-link {
+  font-weight: 700;
+  color: #28714c;
+}
 .queue-actions .danger {
   margin-left: auto;
   color: #994b46;
+}
+.queue-result-drawer {
+  padding: 12px;
+  border-top: 1px solid #eee5df;
+  background: #fffaf6;
+}
+.queue-result-drawer-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.queue-result-drawer-images figure {
+  margin: 0;
+}
+.queue-result-drawer-images img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #eee7e0;
+}
+.queue-result-drawer-images figcaption {
+  padding: 4px 2px 0;
+  color: #716568;
+  font-size: 11px;
+  text-align: center;
+}
+.queue-result-drawer-actions {
+  display: flex;
+  gap: 8px;
 }
 .queue-edit {
   display: grid;
@@ -1055,7 +1100,8 @@ p {
   margin-left: auto;
 }
 .comparison-rank,
-.winner-badge {
+.winner-badge,
+.demo-badge {
   padding: 3px 7px;
   border-radius: 999px;
   font-size: 10px;
@@ -1068,6 +1114,11 @@ p {
 .winner-badge {
   color: #7e4635;
   background: #f4d9ca;
+}
+.demo-badge {
+  color: #8b4b34;
+  background: #fdf0eb;
+  border: 1px solid #f2cfc3;
 }
 .comparison-result {
   width: 100%;

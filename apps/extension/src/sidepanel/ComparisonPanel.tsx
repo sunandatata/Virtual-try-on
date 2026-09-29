@@ -55,6 +55,14 @@ function ComparisonCard({
       <div className="comparison-card-heading">
         <span className="comparison-rank">#{position + 1}</span>
         {item.winner && <span className="winner-badge">Winner</span>}
+        {item.job.isDemo ||
+        item.job.provider === 'mock' ||
+        result.asset?.name.includes('demo') ||
+        result.asset?.mime.includes('svg') ? (
+          <span className="demo-badge">Simulated · Demo</span>
+        ) : (
+          <span className="provider-real">FASHN result</span>
+        )}
         <button
           className="favorite-button"
           aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
@@ -203,10 +211,27 @@ export function ComparisonPanel() {
         <p className="status error" role="alert">
           {error}
         </p>
-      ) : completed.length < 2 ? (
+      ) : completed.length === 0 ? (
         <div className="queue-empty">
-          <strong>Complete at least two try-ons</strong>
+          <strong>No completed try-ons yet</strong>
           <span>Your finished queue results will appear here.</span>
+        </div>
+      ) : completed.length === 1 ? (
+        <div className="comparison-single">
+          <p className="notice">
+            Complete at least two try-ons to compare side by side. Here is your finished result:
+          </p>
+          <div className="comparison-scroll" aria-label="Completed try-on result">
+            <ComparisonCard
+              item={completed[0]!}
+              position={0}
+              count={1}
+              onChanged={() => void load()}
+              onMove={() => undefined}
+              onRemove={() => undefined}
+              onWinner={() => undefined}
+            />
+          </div>
         </div>
       ) : (
         <>

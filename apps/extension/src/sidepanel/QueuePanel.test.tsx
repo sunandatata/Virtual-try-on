@@ -6,6 +6,7 @@ import {
   getCaptureDraft,
   listQueueItems,
   saveCaptureDraft,
+  saveQueueResult,
 } from '../lib/queue-storage';
 import type { CaptureDraft, CreateQueueItemInput } from '../lib/queue-storage';
 import { clearAllLocalData, saveImage } from '../lib/storage';
@@ -331,5 +332,43 @@ describe('QueuePanel', () => {
       }),
     );
     expect(confirm).toBeEnabled();
+  });
+
+  it('displays try-on results on completed queue items, distinguishes simulation, and opens drawer', async () => {
+    const item = await createQueueItem(queueInput());
+    await saveQueueResult(
+      item.id,
+      {
+        blob: new Blob(['<svg><text>DEMO RESULT</text></svg>'], { type: 'image/svg+xml' }),
+        name: 'demo-result.svg',
+        mime: 'image/svg+xml',
+        width: 600,
+        height: 900,
+      },
+      { isDemo: true, provider: 'mock' },
+    );
+
+    const user = userEvent.setup();
+    render(<QueuePanel />);
+
+    expect(await screen.findByText('Simulated · Demo (not AI)')).toBeVisible();
+    expect(await screen.findByAltText('Queue Dress try-on result')).toBeVisible();
+
+    const downloadLink = screen.getByRole('link', { name: 'Download' });
+    expect(downloadLink).toHaveAttribute('download', 'queue-dress-tryon.svg');
+
+    const viewButton = screen.getByRole('button', { name: 'View result' });
+    await user.click(viewButton);
+
+    const drawer = await screen.findByLabelText('Queue Dress try-on preview');
+    expect(within(drawer).getByText('Simulated result (Demo)')).toBeVisible();
+    expect(within(drawer).getByText('Original garment')).toBeVisible();
+    expect(within(drawer).getByRole('link', { name: 'Download try-on' })).toHaveAttribute(
+      'download',
+      'queue-dress-tryon.svg',
+    );
+
+    await user.click(within(drawer).getByRole('button', { name: 'Close preview' }));
+    expect(screen.queryByLabelText('Queue Dress try-on preview')).not.toBeInTheDocument();
   });
 });
