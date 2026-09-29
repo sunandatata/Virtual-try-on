@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       exp: Date.now() + 10 * 60_000,
     });
     const resultUrl = `/api/try-on/result?token=${encodeURIComponent(resultToken)}`;
-    return Response.json({ ok: true, ...status, resultUrl }, { headers: cors });
+    return Response.json({ ok: true, ...status, resultUrl, isDemo: false }, { headers: cors });
   } catch (error) {
     const invalid =
       error instanceof Error && /token|signature|expired|JSON|type/i.test(error.message);

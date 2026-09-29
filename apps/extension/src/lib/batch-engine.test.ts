@@ -123,7 +123,10 @@ describe('sequential batch engine', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     await processActiveBatchStep(deps);
-    expect(await getQueueItem(first.id)).toMatchObject({ status: 'completed' });
+    expect(await getQueueItem(first.id)).toMatchObject({
+      status: 'completed',
+      job: { status: 'succeeded', isDemo: true, provider: 'mock' },
+    });
     expect(await getQueueItem(second.id)).toMatchObject({ job: { status: 'queued' } });
 
     await processActiveBatchStep(deps);

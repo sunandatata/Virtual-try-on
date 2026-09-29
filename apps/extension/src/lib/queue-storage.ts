@@ -247,7 +247,11 @@ export async function resetQueueItemForRetry(id: string): Promise<QueueItem> {
   });
 }
 
-export async function saveQueueResult(itemId: string, result: QueueAssetInput): Promise<QueueItem> {
+export async function saveQueueResult(
+  itemId: string,
+  result: QueueAssetInput,
+  options?: { isDemo?: boolean; provider?: 'mock' | 'fashn' },
+): Promise<QueueItem> {
   const database = await openDatabase();
   const transaction = database.transaction(['queueItems', 'assets'], 'readwrite');
   const queueStore = transaction.objectStore('queueItems');
@@ -267,11 +271,22 @@ export async function saveQueueResult(itemId: string, result: QueueAssetInput): 
     createdAt: now,
     updatedAt: now,
   };
+  const isDemo =
+    options?.isDemo ??
+    item.job.isDemo ??
+    (options?.provider === 'mock' || item.job.provider === 'mock' || result.name.endsWith('.svg'));
   const next: QueueItem = {
     ...item,
     resultAssetId,
     status: 'completed',
-    job: { ...item.job, status: 'succeeded', updatedAt: now, lastError: undefined },
+    job: {
+      ...item.job,
+      status: 'succeeded',
+      provider: options?.provider ?? item.job.provider,
+      isDemo,
+      updatedAt: now,
+      lastError: undefined,
+    },
     updatedAt: now,
   };
   await Promise.all([transaction.objectStore('assets').put(asset), queueStore.put(next)]);

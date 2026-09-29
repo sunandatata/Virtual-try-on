@@ -298,13 +298,30 @@ export async function processActiveBatchStep(dependencies: BatchEngineDependenci
         throw { message: 'The generated result could not be downloaded.', retryable: true };
       }
       const blob = await resultResponse.blob();
-      await saveQueueResult(item.id, {
-        blob,
-        name: parsed.data.isDemo ? 'virtual-try-on-demo.svg' : 'virtual-try-on-result.png',
-        mime: blob.type,
-        width: 0,
-        height: 0,
-      });
+      let width = 0;
+      let height = 0;
+      try {
+        const bitmap = await createImageBitmap(blob);
+        width = bitmap.width;
+        height = bitmap.height;
+        bitmap.close();
+      } catch {
+        // SVG or vector mock result
+      }
+      await saveQueueResult(
+        item.id,
+        {
+          blob,
+          name: parsed.data.isDemo ? 'virtual-try-on-demo.svg' : 'virtual-try-on-result.png',
+          mime: blob.type,
+          width,
+          height,
+        },
+        {
+          isDemo: parsed.data.isDemo ?? item.job.provider === 'mock',
+          provider: item.job.provider,
+        },
+      );
       await finishBatchItem(currentBatch, itemId, 'completed', dependencies);
     } catch (reason) {
       const error = reason as { message?: string; retryable?: boolean; code?: string };

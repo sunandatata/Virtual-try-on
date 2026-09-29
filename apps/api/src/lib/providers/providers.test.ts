@@ -65,4 +65,26 @@ describe('providers', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(timeout);
     await expect(new FashnTryOnProvider().submit(input)).rejects.toThrow('PROVIDER_TIMEOUT');
   });
+
+  it('extracts detailed provider error messages from FASHN error responses', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { message: 'Face not detected in model image' } }), {
+        status: 422,
+      }),
+    );
+    await expect(new FashnTryOnProvider().submit(input)).rejects.toThrow(
+      'Provider FASHN error: Face not detected in model image.',
+    );
+  });
+
+  it('extracts string error messages from FASHN error responses', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Insufficient credits' }), {
+        status: 402,
+      }),
+    );
+    await expect(new FashnTryOnProvider().submit(input)).rejects.toThrow(
+      'Provider FASHN error: Insufficient credits.',
+    );
+  });
 });

@@ -23,8 +23,28 @@ async function fashnFetch(path: string, init: RequestInit): Promise<Response> {
     throw error;
   }
   if (!response.ok) {
+    let detail = '';
+    try {
+      const errBody = (await response.json()) as {
+        error?: { message?: string } | string | null;
+        message?: string;
+      };
+      if (typeof errBody.error === 'string') {
+        detail = errBody.error;
+      } else if (errBody.error?.message) {
+        detail = errBody.error.message;
+      } else if (errBody.message) {
+        detail = errBody.message;
+      }
+    } catch {
+      // non-JSON response body
+    }
     const retryable = response.status === 429 || response.status >= 500;
-    throw new Error(`${retryable ? 'Temporary' : 'Provider'} FASHN error (${response.status}).`);
+    const prefix = retryable ? 'Temporary' : 'Provider';
+    const message = detail
+      ? `${prefix} FASHN error: ${detail}.`
+      : `${prefix} FASHN error (${response.status}).`;
+    throw new Error(message);
   }
   return response;
 }
