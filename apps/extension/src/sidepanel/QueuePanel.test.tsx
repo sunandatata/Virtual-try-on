@@ -371,4 +371,32 @@ describe('QueuePanel', () => {
     await user.click(within(drawer).getByRole('button', { name: 'Close preview' }));
     expect(screen.queryByLabelText('Queue Dress try-on preview')).not.toBeInTheDocument();
   });
+
+  it('preserves try-on results across panel reopening and renders real result correctly', async () => {
+    const item = await createQueueItem(queueInput());
+    await saveQueueResult(
+      item.id,
+      {
+        blob: new Blob(['fashn-output-bytes'], { type: 'image/png' }),
+        name: 'fashn-tryon.png',
+        mime: 'image/png',
+        width: 768,
+        height: 1024,
+      },
+      { isDemo: false, provider: 'fashn' },
+    );
+
+    const firstMount = render(<QueuePanel />);
+    expect(await screen.findByText('FASHN result')).toBeVisible();
+    expect(await screen.findByAltText('Queue Dress try-on result')).toBeVisible();
+    firstMount.unmount();
+
+    render(<QueuePanel />);
+    expect(await screen.findByText('FASHN result')).toBeVisible();
+    expect(await screen.findByAltText('Queue Dress try-on result')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute(
+      'download',
+      'queue-dress-tryon.png',
+    );
+  });
 });

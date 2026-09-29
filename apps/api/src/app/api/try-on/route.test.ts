@@ -1,5 +1,5 @@
 import { MAX_IMAGE_BYTES } from '@virtual-try-on/shared';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 
 const png = Buffer.from(
@@ -23,12 +23,16 @@ function uploadRequest(person: File, garment = image(), client = 'upload-test') 
   });
 }
 
-describe('POST /api/try-on rejection', () => {
+describe('POST /api/try-on', () => {
   beforeEach(() => {
     process.env.ALLOWED_EXTENSION_ORIGINS = 'chrome-extension://abc';
     process.env.APP_ACCESS_CODE = '';
     process.env.TRYON_PROVIDER = 'mock';
     delete process.env.RATE_LIMIT_PROVIDER;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('rejects non-multipart requests and disallowed origins', async () => {
@@ -115,5 +119,55 @@ describe('POST /api/try-on rejection', () => {
       ok: false,
       error: { code: 'RATE_LIMITED', retryable: true },
     });
+  });
+
+  it('accepts valid person and garment images and returns a signed job token in mock mode', async () => {
+    const response = await POST(uploadRequest(image(), image(), 'success-test'));
+    expect(response.status).toBe(202);
+    const body = (await response.json()) as {
+      ok: boolean;
+      status: string;
+      provider: string;
+      jobToken: string;
+    };
+    expect(body).toMatchObject({
+      ok: true,
+      status: 'processing',
+      provider: 'mock',
+    });
+    expect(typeof body.jobToken).toBe('string');
+  });
+
+  it('delegates to FASHN with the exact person and garment data when FASHN mode is active', async () => {
+    process.env.TRYON_PROVIDER = 'fashn';
+    process.env.FASHN_API_KEY = 'test-fashn-key';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'fashn-job-123' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const response = await POST(uploadRequest(image(), image(), 'fashn-test'));
+    expect(response.status).toBe(202);
+    const body = (await response.json()) as {
+      ok: boolean;
+      status: string;
+      provider: string;
+      jobToken: string;
+    };
+    expect(body).toMatchObject({
+      ok: true,
+      status: 'processing',
+      provider: 'fashn',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      model_name: string;
+      inputs: { model_image: string; garment_image: string; category: string };
+    };
+    expect(requestBody.inputs.model_image).toContain('data:image/png;base64,');
+    expect(requestBody.inputs.garment_image).toContain('data:image/png;base64,');
+    expect(requestBody.inputs.category).toBe('one-pieces');
   });
 });
