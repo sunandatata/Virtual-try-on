@@ -11,6 +11,7 @@ import { processImage } from '../lib/images';
 import { createCaptureDraft } from '../lib/capture';
 import { getSettings, saveSettings } from '../lib/settings';
 import type { ExtensionSettings } from '../lib/settings';
+import { getDefaultBodyProfile } from '../lib/body-profile-storage';
 import {
   migrateLegacyGarmentToQueue,
   migrateLegacyPersonToProfile,
@@ -208,17 +209,37 @@ export function App() {
   useEffect(() => {
     void (async () => {
       await Promise.all([migrateLegacyGarmentToQueue(), migrateLegacyPersonToProfile()]);
-      const [savedPerson, savedGarment, savedResult, savedSettings, local] = await Promise.all([
-        getImage('person'),
-        getImage('garment'),
-        getImage('result'),
-        getSettings(),
-        chrome.storage.local.get(['generation', 'garmentSelectionError']),
-      ]);
-      setPerson(savedPerson);
+      const [savedPerson, savedGarment, savedResult, savedSettings, local, defaultProfile] =
+        await Promise.all([
+          getImage('person'),
+          getImage('garment'),
+          getImage('result'),
+          getSettings(),
+          chrome.storage.local.get(['generation', 'garmentSelectionError']),
+          getDefaultBodyProfile(),
+        ]);
+      const activePerson =
+        savedPerson ??
+        (defaultProfile
+          ? {
+              slot: 'person' as const,
+              blob: defaultProfile.blob,
+              name: defaultProfile.imageName,
+              mime: defaultProfile.mime,
+              width: defaultProfile.width,
+              height: defaultProfile.height,
+              updatedAt: defaultProfile.updatedAt,
+            }
+          : undefined);
+      setPerson(activePerson);
       setGarment(savedGarment);
       setResult(savedResult);
-      setSettings(savedSettings);
+      const effectiveConsent = savedSettings.consent || Boolean(defaultProfile?.consent);
+      setSettings(
+        effectiveConsent !== savedSettings.consent
+          ? { ...savedSettings, consent: effectiveConsent }
+          : savedSettings,
+      );
       if (local.garmentSelectionError) setNotice(String(local.garmentSelectionError));
       const restored = local.generation as GenerationState | undefined;
       if (restored) setGeneration(restored);

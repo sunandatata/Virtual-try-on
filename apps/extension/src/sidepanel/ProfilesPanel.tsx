@@ -21,6 +21,25 @@ function profileImage(image: Awaited<ReturnType<typeof processImage>>): BodyProf
   };
 }
 
+function FilePreview({ file }: { file: File }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  if (!url) return null;
+  return (
+    <div className="profile-file-preview" role="status">
+      <img src={url} alt="Selected body photo preview" />
+      <span>
+        <strong>{file.name}</strong>
+        <small>{(file.size / 1024).toFixed(0)} KB · Ready to save</small>
+      </span>
+    </div>
+  );
+}
+
 function ProfilePreview({ profile }: { profile: BodyProfile }) {
   const [url, setUrl] = useState('');
   useEffect(() => {
@@ -231,6 +250,7 @@ export function ProfilesPanel() {
             onChange={(event) => setFile(event.target.files?.[0])}
           />
         </label>
+        {file && <FilePreview file={file} />}
         <button className="button primary" disabled={saving || !file || !profileName.trim()}>
           {saving ? 'Saving…' : 'Create profile'}
         </button>

@@ -87,4 +87,28 @@ describe('body profile repository', () => {
     await expect(setDefaultBodyProfile('missing')).rejects.toThrow('not found');
     await expect(deleteBodyProfile('missing')).rejects.toThrow('not found');
   });
+
+  it('preserves uploaded body-profile image dimensions, MIME type, and aspect ratio round trip', async () => {
+    const rawImage = {
+      blob: new Blob(['synthetic-portrait-photo-bytes'], { type: 'image/jpeg' }),
+      imageName: 'full-body.jpg',
+      mime: 'image/jpeg',
+      width: 1080,
+      height: 1920,
+    };
+    const profile = await createBodyProfile({
+      profileName: 'Portrait Pose',
+      description: 'Front-facing phone camera photo',
+      image: rawImage,
+    });
+    const retrieved = (await listBodyProfiles()).find((p) => p.id === profile.id);
+    expect(retrieved).toBeDefined();
+    expect(retrieved?.imageName).toBe('full-body.jpg');
+    expect(retrieved?.mime).toBe('image/jpeg');
+    expect(retrieved?.width).toBe(1080);
+    expect(retrieved?.height).toBe(1920);
+    const aspect = retrieved!.width / retrieved!.height;
+    expect(aspect).toBeCloseTo(0.5625, 3);
+    expect(retrieved?.blob).toBeDefined();
+  });
 });

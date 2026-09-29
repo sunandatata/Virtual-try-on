@@ -188,6 +188,20 @@ function DraftPreview({ draft }: { draft: CaptureDraft }) {
   return url ? <img src={url} alt="Garment awaiting review" /> : null;
 }
 
+function ProfileThumbnail({ profile }: { profile: BodyProfile }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(profile.blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [profile.blob]);
+  return url ? (
+    <div className="batch-profile-thumb" title={`Selected body profile: ${profile.profileName}`}>
+      <img src={url} alt={`${profile.profileName} body preview`} />
+    </div>
+  ) : null;
+}
+
 function suggestionLabel(draft: CaptureDraft, field: 'productName' | 'displayedPrice' | 'color') {
   const suggestion = draft.metadata?.[field];
   if (!suggestion) return 'Entered locally; review before saving.';
@@ -861,29 +875,36 @@ export function QueuePanel({
           </div>
         )}
         {selected.size > 0 && !activeBatch && (
-          <label className="queue-filter batch-profile-picker">
-            Body profile
-            <select
-              disabled={checkingReadiness}
-              value={profileId}
-              onChange={(event) => {
-                setProfileId(event.target.value);
-                setReadiness([]);
-                setConfirmBatch(false);
-              }}
-            >
-              {profiles.length === 0 ? (
-                <option value="">Create a profile first</option>
-              ) : (
-                profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.profileName}
-                    {profile.isDefault ? ' (default)' : ''}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
+          <div className="batch-profile-selection">
+            <label className="queue-filter batch-profile-picker">
+              Body profile
+              <select
+                disabled={checkingReadiness}
+                value={profileId}
+                onChange={(event) => {
+                  setProfileId(event.target.value);
+                  setReadiness([]);
+                  setConfirmBatch(false);
+                }}
+              >
+                {profiles.length === 0 ? (
+                  <option value="">Create a profile first</option>
+                ) : (
+                  profiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.profileName}
+                      {profile.isDefault ? ' (default)' : ''}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+            {profiles.find((candidate) => candidate.id === profileId) && (
+              <ProfileThumbnail
+                profile={profiles.find((candidate) => candidate.id === profileId)!}
+              />
+            )}
+          </div>
         )}
         {confirmBatch && (
           <div className="batch-confirm" role="dialog" aria-labelledby="batch-confirm-title">
