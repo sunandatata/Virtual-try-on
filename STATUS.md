@@ -1,5 +1,22 @@
 # Project Status
 
+## Try-on result pipeline, aspect-ratio preservation, and mock/real distinction - 2026-09-29
+
+- Diagnosed and resolved the try-on result experience end to end, eliminating the root causes of distorted/blank body photo previews and unannounced "DEMO RESULT" placeholders.
+- Preserved body photo aspect ratios using `object-fit: contain` with warm neutral container backing across `.profile-card > img`, `.photo-strip img`, and `.comparison img`, preventing clipping of heads, feet, or torsos on portrait uploads. Added `FilePreview` before profile submission in ProfilesPanel, live `ProfileThumbnail` in the QueuePanel batch header, and automatic sync of active profile to the legacy person slot.
+- Displayed completed try-on results directly on queue cards via `useQueueCardAssets`, showing the result thumbnail with `.queue-result-thumb` styling, an expandable side-by-side preview drawer ("Original garment" vs "Try-on result"), and a direct result download link.
+- Enabled single completed result viewing in `ComparisonPanel`, providing a dedicated single-result card with ranks, notes, winner toggle, and download actions when only one try-on has completed.
+- Visibly distinguished simulated mock outputs from real AI try-ons: mock outputs display `Simulated · Demo (not AI)` / `Simulated · Demo`, while real provider outputs display `FASHN result`.
+- Surface actionable FASHN errors: `fashnFetch` now parses JSON error bodies (`body.error?.message ?? body.message ?? body.error`) so specific messages (e.g. face detection, insufficient credits) are reported honestly.
+- Added comprehensive regression coverage: IndexedDB body profile dimension preservation (9:16 aspect ratio), FASHN error parsing, batch engine `isDemo` propagation, queue item result drawer and simulation badges, single-item comparison rendering, panel reopen persistence, and API upload/FASHN delegation.
+- Full verification passed: formatting (`npm run format:check`), ESLint (`npm run lint`), strict TypeScript (`npm run typecheck`), 104 unit/component tests (API 27, extension 72, shared 5), production Next.js backend build, Vite extension build, Playwright e2e test, and extension zip packaging.
+- Commits pushed to `origin/main`:
+  - `6a19122 fix: preserve uploaded body profile previews and sensible aspect ratio`
+  - `35963f1 fix: preserve result image dimensions and honest provider error reporting`
+  - `2821cfc feat: display try-on results on queue items and distinguish mock simulation`
+  - `35b7a79 test: add regression coverage for try-on result pipeline and panel reopening`
+- Next milestone: manual end-to-end trial with an active user-supplied FASHN API key and real garment inputs.
+
 ## Cross-store differentiation complete - 2026-09-28
 
 - Completed all eight ordered milestones: persistent universal queue, explicit-action metadata extraction and review, narrow queue UI, recoverable sequential batches, two-to-four-item comparison, favorites and collections, reusable body profiles, and explainable readiness checks.
