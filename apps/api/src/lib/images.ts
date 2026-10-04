@@ -1,5 +1,5 @@
 import { IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from '@virtual-try-on/shared';
-import sharp from 'sharp';
+import sharp, { type Metadata } from 'sharp';
 
 export type ValidImage = { buffer: Buffer; mime: (typeof IMAGE_MIME_TYPES)[number] };
 
@@ -12,7 +12,12 @@ export async function validateImage(value: FormDataEntryValue | null): Promise<V
     throw new Error('Images must be no larger than 10 MB.');
   }
   const buffer = Buffer.from(await value.arrayBuffer());
-  const metadata = await sharp(buffer, { failOn: 'error' }).metadata();
+  let metadata: Metadata;
+  try {
+    metadata = await sharp(buffer, { failOn: 'error' }).metadata();
+  } catch {
+    throw new Error('The image content does not match its file type or cannot be decoded.');
+  }
   const expected = value.type === 'image/jpeg' ? 'jpeg' : value.type.split('/')[1];
   if (!metadata.width || !metadata.height || metadata.format !== expected) {
     throw new Error('The image content does not match its file type or cannot be decoded.');

@@ -5,7 +5,7 @@ export interface RateLimiter {
   check(key: string): Promise<{ allowed: boolean; retryAfter: number }>;
 }
 
-class MemoryRateLimiter implements RateLimiter {
+export class MemoryRateLimiter implements RateLimiter {
   async check(key: string) {
     const now = Date.now();
     const bucket = buckets.get(key);
@@ -18,7 +18,7 @@ class MemoryRateLimiter implements RateLimiter {
   }
 }
 
-class UpstashRateLimiter implements RateLimiter {
+export class UpstashRateLimiter implements RateLimiter {
   constructor(
     private readonly url: string,
     private readonly token: string,
@@ -40,6 +40,10 @@ class UpstashRateLimiter implements RateLimiter {
     const results = (await response.json()) as Array<{ result: number }>;
     return { allowed: (results[0]?.result ?? 99) <= 10, retryAfter: 60 };
   }
+}
+
+export function resetRateLimiterMemory(): void {
+  buckets.clear();
 }
 
 export function rateLimiter(): RateLimiter {
