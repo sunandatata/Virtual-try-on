@@ -25,9 +25,15 @@ The garment picker is injected only after an explicit user action and removes it
 
 Users can replace or delete the body photo, remove a garment, start over, or clear all locally stored extension data from Settings. Uninstalling the extension also removes its local storage under Chrome's normal extension-data behavior.
 
-## Planned cross-store data behavior
+## Verified cross-store data handling
 
-The product roadmap adds a local garment queue, explicitly captured product context, favorites, collections, comparisons, notes, job recovery, and multiple body profiles. These features must remain in extension IndexedDB, must not run without user action, and must not send page contents to the backend. This notice will be updated alongside each shipped milestone so it continues to describe verified behavior rather than planned behavior.
+The cross-store workflow operates with strict offline-first principles:
+
+- **Universal try-on queue:** Garment items, retailer-neutral metadata (brand, title, sanitized source URL, price), drafts, and collection memberships are stored exclusively in the extension's local IndexedDB. The extension never transmits product listings, catalog browsing, or unselected page contents.
+- **Multiple body profiles:** User body profiles are stored locally in IndexedDB with per-profile consent flags. Replacing a photo resets consent. No body images are uploaded to the backend without an explicit user-initiated batch generation.
+- **Sequential batches & recovery:** Batch try-ons process garments sequentially (up to five per batch). Transient job tokens and progress are stored locally to allow resilient recovery across Manifest V3 service-worker lifecycles without re-uploading completed jobs.
+- **Side-by-side comparison:** Completed comparisons, rankings, notes, and winner designations remain private in local storage.
+- **Granular deletion controls:** Users can delete individual garments, remove specific body profiles, clear collections without removing garments, or wipe all extension data in Settings.
 
 ## Accuracy and sensitive data
 

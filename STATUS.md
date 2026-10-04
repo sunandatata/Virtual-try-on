@@ -1,5 +1,15 @@
 # Project Status
 
+## Backend rate-limiting & image validation coverage, privacy reconciliation - 2026-10-03
+
+- Added isolated unit testing for backend rate limiters in `rate-limit.test.ts`: verified `MemoryRateLimiter` 10-request limit, client isolation, and bucket reset; verified `UpstashRateLimiter` pipeline payload creation, Bearer authentication, request caps, and network error handling; verified `rateLimiter()` provider switching and fallback behavior.
+- Added comprehensive unit test coverage for `images.test.ts`: verified `validateImage` handling of PNG, JPEG, WebP buffers, non-File inputs, unsupported MIME types, byte size limits (0 to 10 MB), format mismatches, and normalized Sharp decode failure handling to user-friendly error messages.
+- Reconciled `PRIVACY.md` to accurately document verified cross-store capabilities (IndexedDB universal queue, multi-profile consent, batch recovery, and client-side comparisons).
+- Full verification passed: formatting (`prettier`), ESLint (0 errors, 0 warnings), strict TypeScript (`tsc --noEmit`), and 123 unit/component tests across all workspaces (46 API, 72 extension, 5 shared).
+- Commits pushed to `origin/main`:
+  - `adfa751 test: cover backend rate limiting and image validation libraries`
+- Next milestone: manual end-to-end trial with an active user-supplied FASHN API key and real garment inputs.
+
 ## Try-on result pipeline, aspect-ratio preservation, and mock/real distinction - 2026-09-29
 
 - Diagnosed and resolved the try-on result experience end to end, eliminating the root causes of distorted/blank body photo previews and unannounced "DEMO RESULT" placeholders.
