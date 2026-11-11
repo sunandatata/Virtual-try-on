@@ -597,6 +597,19 @@ p {
   height: 1px;
   opacity: 0;
 }
+.manual-image-fallback {
+  margin-top: 14px;
+  color: #6f5961;
+  font-size: 13px;
+}
+.manual-image-fallback summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.manual-image-fallback[open] > *:not(summary) {
+  margin-top: 10px;
+}
 .queue-filter {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

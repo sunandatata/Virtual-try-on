@@ -850,7 +850,8 @@ export function QueuePanel({
           <span className="queue-count">{items.length}</span>
         </div>
         <p className="muted queue-intro">
-          Save garments while you shop, then generate and compare them with the same body photo.
+          Pick a product image on any shop page, review its details, then generate and compare it
+          with your saved body profile.
         </p>
         <div className="queue-add-actions">
           <button
@@ -862,30 +863,33 @@ export function QueuePanel({
           >
             Pick from this page
           </button>
-          <label className="button secondary no-margin queue-upload-button">
-            Upload screenshot
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              aria-label="Upload garment screenshot to queue"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                setCaptureError('');
-                try {
-                  const image = await processImage(file, 'garment', file.name);
-                  await createCaptureDraft({ image });
-                  await load();
-                } catch (reason) {
-                  setCaptureError(
-                    reason instanceof Error ? reason.message : 'Could not use that screenshot.',
-                  );
-                } finally {
-                  event.target.value = '';
-                }
-              }}
-            />
-          </label>
+          <details className="manual-image-fallback">
+            <summary>Can’t select an image? Use a local image</summary>
+            <label className="button secondary no-margin queue-upload-button">
+              Choose garment image
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-label="Choose garment image to add to queue"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setCaptureError('');
+                  try {
+                    const image = await processImage(file, 'garment', file.name);
+                    await createCaptureDraft({ image });
+                    await load();
+                  } catch (reason) {
+                    setCaptureError(
+                      reason instanceof Error ? reason.message : 'Could not use that image.',
+                    );
+                  } finally {
+                    event.target.value = '';
+                  }
+                }}
+              />
+            </label>
+          </details>
         </div>
         {captureError && (
           <p className="status error" role="alert">

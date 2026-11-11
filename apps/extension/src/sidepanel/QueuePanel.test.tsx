@@ -83,6 +83,20 @@ describe('QueuePanel', () => {
     vi.unstubAllGlobals();
   });
 
+  it('makes page capture the primary path and keeps local image selection as a fallback', async () => {
+    const selectFromPage = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<QueuePanel onSelectFromPage={selectFromPage} />);
+
+    expect(await screen.findByText(/Pick a product image on any shop page/i)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Pick from this page' }));
+    expect(selectFromPage).toHaveBeenCalledOnce();
+    expect(screen.getByText('Can’t select an image? Use a local image')).toBeVisible();
+    expect(
+      screen.getByText('Can’t select an image? Use a local image').closest('details'),
+    ).not.toHaveAttribute('open');
+  });
+
   it('requires review and an explicit category before saving a capture draft', async () => {
     await saveCaptureDraft(draft());
     const user = userEvent.setup();

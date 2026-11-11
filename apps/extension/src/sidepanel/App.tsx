@@ -256,7 +256,9 @@ export function App() {
           setActiveView('queue');
           setQueueRefreshKey((value) => value + 1);
           setNotice(
-            next ? 'Garment selected from the page.' : 'Could not read the selected garment.',
+            next
+              ? 'Product image and page details captured. Review them and add the item to your queue.'
+              : 'Could not read the selected garment.',
           );
         });
       }
@@ -537,26 +539,30 @@ export function App() {
               </div>
             </div>
             <button className="button primary" onClick={() => void selectFromPage()}>
-              Select garment from this page
+              Pick product from this page
             </button>
-            <div className="or">
-              <span>or</span>
-            </div>
-            <ImageUpload
-              label="Upload garment screenshot"
-              slot="garment"
-              image={garment}
-              onImage={(next) => {
-                setGarment(next);
-                if (next) {
-                  void createCaptureDraft({ image: next }).then(() => {
-                    setActiveView('queue');
-                    setQueueRefreshKey((value) => value + 1);
-                  });
-                }
-              }}
-            />
-            <p className="hint">A front-facing image with one unobstructed garment works best.</p>
+            <p className="hint">
+              Choose the product image on the open shop page. We’ll capture it and read available
+              product details into your queue.
+            </p>
+            <details className="manual-image-fallback">
+              <summary>Can’t select an image? Use a local image</summary>
+              <ImageUpload
+                label="Choose a garment image"
+                slot="garment"
+                image={garment}
+                onImage={(next) => {
+                  setGarment(next);
+                  if (next) {
+                    void createCaptureDraft({ image: next }).then(() => {
+                      setActiveView('queue');
+                      setQueueRefreshKey((value) => value + 1);
+                    });
+                  }
+                }}
+              />
+              <p className="hint">A clear image showing one garment works best.</p>
+            </details>
             {notice && <p className="notice">{notice}</p>}
           </section>
           <section className="card">

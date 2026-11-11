@@ -1,5 +1,12 @@
 # Project Status
 
+## Product-page capture flow clarified - 2026-11-11
+
+- Made picking the garment image from the open shop page the clear primary path in both Try on and Queue. The extension captures the selected page image and available product details into a queue draft; the user reviews the details, confirms its category, and adds it to the queue before generation.
+- Moved local image upload behind a collapsed fallback so screenshots are not presented as the normal workflow. Updated queue and capture guidance and the Playwright fixture flow to match.
+- Verification passed: formatting, lint, strict type checking, 124 unit/component tests, the Playwright unpacked-extension workflow, production backend and extension builds, and extension ZIP packaging.
+- Next milestone: run a real FASHN generation with a user-supplied API key and complete the documented native Chrome checks.
+
 ## Backend rate-limiting & image validation coverage, privacy reconciliation - 2026-10-03
 
 - Added isolated unit testing for backend rate limiters in `rate-limit.test.ts`: verified `MemoryRateLimiter` 10-request limit, client isolation, and bucket reset; verified `UpstashRateLimiter` pipeline payload creation, Bearer authentication, request caps, and network error handling; verified `rateLimiter()` provider switching and fallback behavior.
