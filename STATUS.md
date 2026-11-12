@@ -1,5 +1,12 @@
 # Project Status
 
+## Side-panel picker targets the active shop tab - 2026-11-11
+
+- Fixed garment picker activation to resolve the active tab in Chrome's last-focused window. The service worker's `currentWindow` query could resolve the wrong context when invoked from the side panel, producing a false "Open a regular shopping page" message on product pages.
+- Updated the extension fixture workflow to use the same last-focused active-tab lookup.
+- Verification passed: formatting, lint, strict type checking, 124 unit/component tests, the Playwright unpacked-extension workflow, and production builds/package.
+- Next milestone: run a real FASHN generation with a user-supplied API key and complete the documented native Chrome checks.
+
 ## Product-page capture flow clarified - 2026-11-11
 
 - Made picking the garment image from the open shop page the clear primary path in both Try on and Queue. The extension captures the selected page image and available product details into a queue draft; the user reviews the details, confirms its category, and adds it to the queue before generation.

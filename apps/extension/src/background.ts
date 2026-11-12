@@ -127,7 +127,9 @@ chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
   if (!parsed.success) return false;
   if (parsed.data.type === 'OPEN_PICKER') {
     void (async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      // The extension service worker has no reliable current window when a side panel
+      // sends this message. Resolve the active shop tab from Chrome's last-focused window.
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       const localFixture = tab?.url === chrome.runtime.getURL('fixture.html');
       if (!tab?.id || !tab.url || (!/^https?:/i.test(tab.url) && !localFixture)) {
         sendResponse({

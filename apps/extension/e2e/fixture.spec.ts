@@ -39,8 +39,8 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
 
     await fixture.bringToFront();
     await serviceWorker.evaluate(async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) throw new Error('Fixture tab is not active.');
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (!tab?.id) throw new Error('Fixture tab is not active in the last-focused window.');
       await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_PICKER' });
     });
     const dress = fixture.locator('#dress-product');
