@@ -6,6 +6,7 @@ import { getBodyProfile } from './lib/body-profile-storage';
 import { createCaptureDraft } from './lib/capture';
 import { getSettings } from './lib/settings';
 import { saveImage } from './lib/storage';
+import { activatePagePicker } from './lib/page-picker';
 
 const MENU_ID = 'virtual-try-on-image';
 const BATCH_ALARM = 'virtual-try-on-batch';
@@ -126,34 +127,7 @@ chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
   const parsed = extensionMessageSchema.safeParse(raw);
   if (!parsed.success) return false;
   if (parsed.data.type === 'OPEN_PICKER') {
-    void (async () => {
-      // The extension service worker has no reliable current window when a side panel
-      // sends this message. Resolve the active shop tab from Chrome's last-focused window.
-      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-      const localFixture = tab?.url === chrome.runtime.getURL('fixture.html');
-      if (!tab?.id || !tab.url || (!/^https?:/i.test(tab.url) && !localFixture)) {
-        sendResponse({
-          ok: false,
-          error: 'Open a regular shopping page before selecting a garment.',
-        });
-        return;
-      }
-      try {
-        if (!localFixture) {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js'],
-          });
-        }
-        await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_PICKER' });
-        sendResponse({ ok: true });
-      } catch {
-        sendResponse({
-          ok: false,
-          error: 'Chrome could not activate selection on this page. Use the upload option instead.',
-        });
-      }
-    })();
+    void activatePagePicker().then(sendResponse);
     return true;
   }
   if (parsed.data.type === 'GARMENT_SELECTED') {
