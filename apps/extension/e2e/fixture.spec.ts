@@ -71,7 +71,7 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
     const demoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960"><rect width="720" height="960" fill="#eadfd2"/><circle cx="360" cy="220" r="90" fill="#dbaf99"/><path d="M220 860V470c0-120 280-120 280 0v390z" fill="#704457"/><text x="360" y="920" text-anchor="middle" font-family="sans-serif" font-size="34">DEMO RESULT</text></svg>`;
     const demoResult = `data:image/svg+xml;base64,${Buffer.from(demoSvg).toString('base64')}`;
     let polls = 0;
-    await context.route('http://localhost:3000/api/try-on', async (route) => {
+    await context.route(/^http:\/\/localhost:\d+\/api\/try-on$/, async (route) => {
       await route.fulfill({
         status: 202,
         contentType: 'application/json',
@@ -84,7 +84,7 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
         }),
       });
     });
-    await context.route('http://localhost:3000/api/try-on/status?*', async (route) => {
+    await context.route(/^http:\/\/localhost:\d+\/api\/try-on\/status\?.*/, async (route) => {
       polls += 1;
       await route.fulfill({
         status: 200,

@@ -1,5 +1,12 @@
 # Project Status
 
+## Local API port configuration - 2026-11-13
+
+- Added `VITE_LOCAL_API_ORIGIN` so a local extension build uses one localhost origin for its default backend URL and optional host permission. Existing saved settings using the old `http://localhost:3000` default migrate to the configured local origin.
+- Configured this workspace locally for `http://localhost:3001` in ignored `apps/extension/.env.local`; the mock API is running and its health endpoint responds.
+- Verification passed: formatting, lint, strict type checking, 128 unit/component tests, the Playwright unpacked-extension workflow, production builds, and extension ZIP packaging.
+- Next step: reload the unpacked extension in Chrome, then confirm the active-tab picker and generate flow on a real shop page.
+
 ## Side-panel picker accepts tabs with hidden URLs - 2026-11-12
 
 - Fixed garment picker activation to resolve the active tab in Chrome's last-focused window and removed the requirement that Chrome expose the page URL. The service worker now attempts the user-requested injection and reports a permission/access error only when Chrome blocks it.

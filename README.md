@@ -53,6 +53,8 @@ Use a random `JOB_TOKEN_SECRET` of at least 32 characters before any production 
 8. Select one or more queued garments, choose the body profile, and press Generate. Review the local readiness guidance and confirm the exact provider-credit count. Chrome asks once for access to `http://localhost:3000`; approve it.
 9. The sequential mock batch returns unmistakable **DEMO · NOT AI** results. Verify comparison, favorites, collections, source links, downloads, retries, profile replacement, and local-data deletion.
 
+For a development API port other than 3000, set `VITE_LOCAL_API_ORIGIN` in `apps/extension/.env.local` (for example, `http://localhost:3001`) before building. The extension uses that as its default backend and declares the matching localhost origin as optional access; Chrome asks for access only when you generate.
+
 The fixture uses only locally generated geometric artwork. It includes product images, a responsive image, a tiny decorative icon that the picker ignores, and a data-URL case that exercises the upload fallback.
 
 ## Real FASHN generations
