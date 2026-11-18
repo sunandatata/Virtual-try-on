@@ -1,5 +1,12 @@
 # Project Status
 
+## Clear stale garment-picker errors - 2026-11-18
+
+- The side panel no longer restores an old garment-selection error from local storage when it opens. Picker failures are shown for the current attempt only, so a previous unsupported-tab message cannot linger on a shop product page.
+- Removed the unused persisted error writes from the background garment capture handler.
+- Verification passed: formatting, lint, strict type checking, 128 unit/component tests, the Playwright unpacked-extension workflow, production builds, and extension ZIP packaging.
+- Next step: reload the unpacked extension and retry the product-page picker on BloomChic.
+
 ## Local API port configuration - 2026-11-13
 
 - Added `VITE_LOCAL_API_ORIGIN` so a local extension build uses one localhost origin for its default backend URL and optional host permission. Existing saved settings using the old `http://localhost:3000` default migrate to the configured local origin.

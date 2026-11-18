@@ -215,7 +215,7 @@ export function App() {
           getImage('garment'),
           getImage('result'),
           getSettings(),
-          chrome.storage.local.get(['generation', 'garmentSelectionError']),
+          chrome.storage.local.get(['generation']),
           getDefaultBodyProfile(),
         ]);
       const activePerson =
@@ -240,7 +240,6 @@ export function App() {
           ? { ...savedSettings, consent: effectiveConsent }
           : savedSettings,
       );
-      if (local.garmentSelectionError) setNotice(String(local.garmentSelectionError));
       const restored = local.generation as GenerationState | undefined;
       if (restored) setGeneration(restored);
       if (restored?.status === 'processing' && restored.jobToken) {

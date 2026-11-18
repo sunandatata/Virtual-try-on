@@ -102,7 +102,6 @@ async function storeRemoteGarment(
       sourcePageUrl: metadata?.sourceUrl ?? sourcePageUrl,
       metadata,
     });
-    await chrome.storage.local.set({ garmentSelectionError: '' });
     await chrome.runtime.sendMessage({
       type: 'GARMENT_BYTES',
       dataUrl: '',
@@ -112,7 +111,6 @@ async function storeRemoteGarment(
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Could not copy this image.';
-    await chrome.storage.local.set({ garmentSelectionError: reason });
     await chrome.runtime.sendMessage({ type: 'GARMENT_FETCH_FAILED', reason });
   }
 }
