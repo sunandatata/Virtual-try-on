@@ -11,7 +11,11 @@ import { processImage } from '../lib/images';
 import { createCaptureDraft } from '../lib/capture';
 import { getSettings, saveSettings } from '../lib/settings';
 import type { ExtensionSettings } from '../lib/settings';
-import { getDefaultBodyProfile } from '../lib/body-profile-storage';
+import {
+  createBodyProfile,
+  getDefaultBodyProfile,
+  replaceBodyProfileImage,
+} from '../lib/body-profile-storage';
 import {
   migrateLegacyGarmentToQueue,
   migrateLegacyPersonToProfile,
@@ -40,6 +44,27 @@ function usePreview(image?: StoredImage) {
   return url;
 }
 
+async function syncDefaultBodyProfile(image: StoredImage): Promise<void> {
+  const profileImage = {
+    blob: image.blob,
+    imageName: image.name,
+    mime: image.mime,
+    width: image.width,
+    height: image.height,
+  };
+  const existing = await getDefaultBodyProfile();
+  if (existing) {
+    await replaceBodyProfileImage(existing.id, profileImage);
+  } else {
+    await createBodyProfile({
+      profileName: 'Default profile',
+      description: 'Saved body photo',
+      image: profileImage,
+      makeDefault: true,
+    });
+  }
+}
+
 function ImageUpload({
   label,
   slot,
@@ -49,7 +74,7 @@ function ImageUpload({
   label: string;
   slot: ImageSlot;
   image?: StoredImage;
-  onImage: (image?: StoredImage) => void;
+  onImage: (image?: StoredImage) => void | Promise<void>;
 }) {
   const preview = usePreview(image);
   const [error, setError] = useState('');
@@ -59,7 +84,7 @@ function ImageUpload({
       setError('');
       const processed = await processImage(file, slot, file.name);
       await saveImage(processed);
-      onImage(processed);
+      await onImage(processed);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not use that image.');
     }
@@ -421,7 +446,10 @@ export function App() {
             label="Add your body photo"
             slot="person"
             image={person}
-            onImage={setPerson}
+            onImage={async (image) => {
+              setPerson(image);
+              if (image) await syncDefaultBodyProfile(image);
+            }}
           />
           <label className="consent">
             <input
@@ -520,6 +548,7 @@ export function App() {
                   if (file) {
                     const next = await processImage(file, 'person', file.name);
                     await saveImage(next);
+                    await syncDefaultBodyProfile(next);
                     setPerson(next);
                     await updateConsent(false);
                   }

@@ -3,7 +3,7 @@ import { DATABASE_NAME, DATABASE_VERSION, resetDatabaseConnectionForTests } from
 import { getQueueAssetByKind, listQueueItems } from './queue-storage';
 import { migrateLegacyGarmentToQueue, migrateLegacyPersonToProfile } from './storage-migrations';
 import { listBodyProfiles } from './body-profile-storage';
-import { getImage } from './storage';
+import { getImage, saveImage } from './storage';
 
 async function deleteTestDatabase(): Promise<void> {
   await resetDatabaseConnectionForTests();
@@ -110,6 +110,27 @@ describe('legacy IndexedDB migration', () => {
       imageUpdatedAt: 124,
     });
     expect(await getImage('person')).toMatchObject({ name: 'body.png' });
+  });
+
+  it('retries the body-photo migration when a photo is saved after an earlier empty check', async () => {
+    await createVersionOneDatabase(false);
+    expect(await migrateLegacyPersonToProfile()).toEqual({ status: 'nothing-to-migrate' });
+
+    await saveImage({
+      slot: 'person',
+      blob: new Blob(['late legacy person'], { type: 'image/png' }),
+      name: 'late-body.png',
+      mime: 'image/png',
+      width: 800,
+      height: 1200,
+      updatedAt: 200,
+    });
+
+    const result = await migrateLegacyPersonToProfile();
+    const profiles = await listBodyProfiles();
+    expect(result).toMatchObject({ status: 'migrated', profileId: profiles[0]?.id });
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0]).toMatchObject({ imageName: 'late-body.png', isDefault: true });
   });
 
   it('records an empty migration without creating a queue item', async () => {

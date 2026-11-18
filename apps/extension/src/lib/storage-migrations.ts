@@ -30,20 +30,32 @@ export async function migrateLegacyPersonToProfile(): Promise<LegacyPersonMigrat
   const transaction = database.transaction(['images', 'bodyProfiles', 'metadata'], 'readwrite');
   const metadataStore = transaction.objectStore('metadata');
   const completed = await metadataStore.get(LEGACY_PERSON_MIGRATION);
-  if (completed) {
+  const migration = completed?.value as { profileId?: string } | undefined;
+  if (migration?.profileId) {
     await transaction.done;
-    const value = completed.value as { profileId?: string } | undefined;
-    return { status: 'already-migrated', profileId: value?.profileId };
+    return { status: 'already-migrated', profileId: migration.profileId };
   }
   const existingProfiles = await transaction.objectStore('bodyProfiles').count();
   const legacyPerson = await transaction.objectStore('images').get('person');
-  if (!legacyPerson || existingProfiles > 0) {
+  if (existingProfiles > 0) {
+    const profiles = await transaction.objectStore('bodyProfiles').getAll();
+    const profileId = profiles.find((profile) => profile.isDefault)?.id ?? profiles[0]?.id;
     await metadataStore.put({
       key: LEGACY_PERSON_MIGRATION,
-      value: { completedAt: Date.now() },
+      value: { completedAt: Date.now(), profileId },
     });
     await transaction.done;
-    return { status: 'nothing-to-migrate' };
+    return { status: 'already-migrated', profileId };
+  }
+  if (!legacyPerson) {
+    if (!completed) {
+      await metadataStore.put({
+        key: LEGACY_PERSON_MIGRATION,
+        value: { completedAt: Date.now() },
+      });
+    }
+    await transaction.done;
+    return completed ? { status: 'already-migrated' } : { status: 'nothing-to-migrate' };
   }
   const now = Date.now();
   const profileId = createId('profile');

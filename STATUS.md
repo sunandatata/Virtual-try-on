@@ -1,5 +1,12 @@
 # Project Status
 
+## Keep the Try on photo available as a queue profile - 2026-11-18
+
+- Saving or changing the body photo in Try on now creates or updates the default body profile used by Queue generation.
+- The legacy photo migration retries when its earlier pass found no photo, allowing an already-saved body photo to become a profile without clearing extension data.
+- Added a regression test for a body photo saved after the initial empty migration check.
+- Next step: reload the extension; Queue should show the saved photo as its default profile. Use **Show all items** if the status filter hides the queued garment.
+
 ## Clear stale garment-picker errors - 2026-11-18
 
 - The side panel no longer restores an old garment-selection error from local storage when it opens. Picker failures are shown for the current attempt only, so a previous unsupported-tab message cannot linger on a shop product page.
