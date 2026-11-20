@@ -1,5 +1,15 @@
 # Project Status
 
+## Universal product picker repair - 2026-11-19 (in progress)
+
+- The picker attempts current-tab `activeTab` injection first, and requests only the current HTTP/HTTPS retailer origin after an injection failure. Restricted browser pages, PDFs, permission denial, and injection failures return specific fallback guidance.
+- Candidate discovery covers responsive and lazy image URLs, CSS backgrounds, canvas screenshot candidates, dynamically inserted galleries, and accessible same-origin frames. The picker UI is isolated in a closed Shadow DOM and Escape restores its temporary accessibility changes.
+- Selected images are fetched directly when possible. When direct retrieval fails, visible-tab capture crops the selected element using screenshot-to-viewport scale ratios; partial/offscreen products are rejected. Drafts retain picker/context-menu source and direct/crop/manual capture method.
+- Added synthetic retailer fixtures and focused tests for permission paths, candidate sources, cleanup, crop geometry, fallback, metadata, and persisted capture provenance.
+- Validation so far: full unit suites pass (46 API, 102 extension, 5 shared), formatting/lint/strict type checks pass, backend and extension production builds pass, package creation passes, and the existing unpacked-extension Playwright flow passes. A separate selection E2E attempt stalled while dispatching a click in a `chrome-extension://` fixture page and was removed; the existing Playwright flow only checks picker activation/cleanup, not draft persistence from selecting a product. Native Chrome verification is still pending because the connected browser host is unavailable.
+- Final automated validation: format, lint, typecheck, all unit tests (153 total), backend/extension production builds, extension packaging, and the unpacked-extension Playwright harness all pass. Packaged extension ZIP is `apps/extension/release/virtual-try-on-0.1.0.zip`; its manifest has HTTP/HTTPS retailer patterns as optional permissions and defaults to localhost:3000.
+- Next: manually verify the picker click-to-draft path on a normal HTTPS retailer and a local synthetic retailer in Chrome. The Playwright harness confirms the unpacked extension loads and picker activation/cancel cleanup, but it does not cover product selection/persistence. Do not report retailer compatibility as manually verified yet.
+
 ## Keep the Try on photo available as a queue profile - 2026-11-18
 
 - Saving or changing the body photo in Try on now creates or updates the default body profile used by Queue generation.

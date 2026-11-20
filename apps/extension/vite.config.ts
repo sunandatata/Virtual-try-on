@@ -13,6 +13,7 @@ export default defineConfig({
         sidepanel: resolve(__dirname, 'sidepanel.html'),
         options: resolve(__dirname, 'options.html'),
         fixture: resolve(__dirname, 'fixture.html'),
+        pickerFixtures: resolve(__dirname, 'picker-fixtures.html'),
         pickerHarness: resolve(__dirname, 'picker-harness.html'),
         background: resolve(__dirname, 'src/background.ts'),
         content: resolve(__dirname, 'src/content.ts'),

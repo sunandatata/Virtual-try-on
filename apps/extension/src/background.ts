@@ -1,4 +1,4 @@
-import { extensionMessageSchema, MAX_IMAGE_BYTES } from '@virtual-try-on/shared';
+import { extensionMessageSchema } from '@virtual-try-on/shared';
 import type { ProductMetadata } from '@virtual-try-on/shared';
 import { processActiveBatchStep } from './lib/batch-engine';
 import { createGenerationBatch } from './lib/batch-storage';
@@ -7,6 +7,8 @@ import { createCaptureDraft } from './lib/capture';
 import { getSettings } from './lib/settings';
 import { saveImage } from './lib/storage';
 import { activatePagePicker } from './lib/page-picker';
+import { loadGarmentImage } from './lib/garment-image';
+import type { PickerCapture } from '@virtual-try-on/shared';
 
 const MENU_ID = 'virtual-try-on-image';
 const BATCH_ALARM = 'virtual-try-on-batch';
@@ -67,32 +69,25 @@ async function storeRemoteGarment(
   src: string,
   metadata?: ProductMetadata,
   sourcePageUrl?: string,
-): Promise<void> {
+  options: {
+    capture?: PickerCapture;
+    windowId?: number;
+    captureSource?: 'page-picker' | 'context-menu';
+  } = {},
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    const localFixture = src.startsWith(chrome.runtime.getURL('fixture/'));
-    if (!/^https?:/i.test(src) && !src.startsWith('data:') && !localFixture) {
-      throw new Error('Protected or temporary image URLs cannot be copied safely.');
-    }
-    const response = await fetch(src, { credentials: 'include' });
-    if (!response.ok) throw new Error('The shopping site did not allow access to this image.');
-    const blob = await response.blob();
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(blob.type)) {
-      throw new Error('This page image format is not supported.');
-    }
-    if (blob.size > MAX_IMAGE_BYTES) throw new Error('The selected image is larger than 10 MB.');
-    const bitmap = await createImageBitmap(blob);
-    if (!bitmap.width || !bitmap.height)
-      throw new Error('The selected image could not be decoded.');
-    const width = bitmap.width;
-    const height = bitmap.height;
-    bitmap.close();
+    const loaded = await loadGarmentImage({
+      src,
+      capture: options.capture,
+      windowId: options.windowId,
+    });
     const storedImage = {
       slot: 'garment',
-      blob,
+      blob: loaded.blob,
       name: 'selected-garment',
-      mime: blob.type,
-      width,
-      height,
+      mime: loaded.blob.type,
+      width: loaded.width,
+      height: loaded.height,
       updatedAt: Date.now(),
     } as const;
     await saveImage(storedImage);
@@ -101,36 +96,89 @@ async function storeRemoteGarment(
       sourceImageUrl: src,
       sourcePageUrl: metadata?.sourceUrl ?? sourcePageUrl,
       metadata,
+      captureMethod: loaded.captureMethod,
+      captureSource: options.captureSource ?? 'page-picker',
     });
-    await chrome.runtime.sendMessage({
-      type: 'GARMENT_BYTES',
-      dataUrl: '',
-      sourceUrl: src,
-      draftId: draft.id,
-      metadata,
-    });
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'GARMENT_BYTES',
+        dataUrl: '',
+        sourceUrl: src,
+        draftId: draft.id,
+        metadata,
+      });
+    } catch {
+      // The saved draft is durable and appears when the side panel next opens.
+    }
+    return { ok: true };
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Could not copy this image.';
-    await chrome.runtime.sendMessage({ type: 'GARMENT_FETCH_FAILED', reason });
+    try {
+      await chrome.runtime.sendMessage({ type: 'GARMENT_FETCH_FAILED', reason });
+    } catch {
+      // The next side-panel open can still recover any draft saved before notification failed.
+    }
+    return { ok: false, error: reason };
   }
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== MENU_ID || !info.srcUrl) return;
   await openPanel(tab);
-  await storeRemoteGarment(info.srcUrl, undefined, info.pageUrl ?? tab?.url);
+  let details:
+    | {
+        ok: true;
+        image: { src: string; alt: string; width: number; height: number };
+        metadata: ProductMetadata;
+        capture?: PickerCapture;
+      }
+    | { ok: false }
+    | undefined;
+  if (tab?.id !== undefined && /^https?:/i.test(tab.url ?? '')) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js'],
+      });
+      details = (await chrome.tabs.sendMessage(tab.id, {
+        type: 'GET_CONTEXT_IMAGE_DETAILS',
+        src: info.srcUrl,
+      })) as typeof details;
+    } catch {
+      // Direct image bytes remain available on sites where injection is blocked.
+    }
+  }
+  await storeRemoteGarment(
+    details?.ok ? details.image.src : info.srcUrl,
+    details?.ok ? details.metadata : undefined,
+    info.pageUrl ?? tab?.url,
+    {
+      capture: details?.ok ? details.capture : undefined,
+      windowId: tab?.windowId,
+      captureSource: 'context-menu',
+    },
+  );
 });
 
-chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
   const parsed = extensionMessageSchema.safeParse(raw);
   if (!parsed.success) return false;
-  if (parsed.data.type === 'OPEN_PICKER') {
-    void activatePagePicker().then(sendResponse);
+  if (parsed.data.type === 'START_PAGE_PICKER') {
+    void activatePagePicker(parsed.data.tabId).then(sendResponse);
     return true;
   }
   if (parsed.data.type === 'GARMENT_SELECTED') {
-    void storeRemoteGarment(parsed.data.image.src, parsed.data.metadata);
-    sendResponse({ ok: true });
+    void storeRemoteGarment(
+      parsed.data.image.src,
+      parsed.data.metadata,
+      parsed.data.metadata.sourceUrl,
+      {
+        capture: parsed.data.capture,
+        windowId: sender.tab?.windowId,
+        captureSource: 'page-picker',
+      },
+    ).then(sendResponse);
+    return true;
   }
   if (parsed.data.type === 'START_BATCH') {
     const itemIds = parsed.data.itemIds;

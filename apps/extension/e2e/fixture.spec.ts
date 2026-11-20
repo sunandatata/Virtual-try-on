@@ -61,7 +61,10 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
       panelHarness.getByRole('heading', { name: 'Confirm garment details' }),
     ).toBeVisible();
     await panelHarness.getByRole('button', { name: 'Try on' }).click();
-    await panelHarness.locator('details.manual-image-fallback > summary').click();
+    const tryOnFallback = panelHarness.locator('details.manual-image-fallback').first();
+    if (!(await tryOnFallback.evaluate((details: HTMLDetailsElement) => details.open))) {
+      await tryOnFallback.locator('summary').click();
+    }
     await expect(panelHarness.getByAltText('Choose a garment image preview')).toBeVisible();
     await panelHarness.screenshot({
       path: testInfo.outputPath('ready-with-garment.png'),
@@ -135,7 +138,9 @@ test('unpacked extension exercises the fixture and narrow side-panel states', as
     await panelHarness.getByRole('button', { name: 'Try on' }).click();
     await panelHarness.getByRole('button', { name: 'Start over' }).click();
     await expect(panelHarness.getByRole('heading', { name: 'Choose a garment' })).toBeVisible();
-    await panelHarness.locator('details.manual-image-fallback > summary').click();
+    if (!(await tryOnFallback.evaluate((details: HTMLDetailsElement) => details.open))) {
+      await tryOnFallback.locator('summary').click();
+    }
     await panelHarness
       .getByLabel('Choose a garment image')
       .setInputFiles(resolve('public/fixture/dress.png'));

@@ -55,7 +55,7 @@ Use a random `JOB_TOKEN_SECRET` of at least 32 characters before any production 
 
 For a development API port other than 3000, set `VITE_LOCAL_API_ORIGIN` in `apps/extension/.env.local` (for example, `http://localhost:3001`) before building. The extension uses that as its default backend and declares the matching localhost origin as optional access; Chrome asks for access only when you generate.
 
-The fixture uses only locally generated geometric artwork. It includes product images, a responsive image, a tiny decorative icon that the picker ignores, and a data-URL case that exercises the upload fallback.
+The fixtures use only locally generated geometric artwork. `picker-fixtures.html` covers responsive and lazy images, CSS backgrounds, thumbnails, a canvas, a blob URL, dynamically inserted products, and same-origin frames.
 
 ## Real FASHN generations
 
@@ -83,12 +83,13 @@ Then set that same origin in extension Settings. A runtime permission prompt app
 
 - `sidePanel` — hosts the primary experience beside the shop.
 - `activeTab` — temporary access to the current tab after a user gesture.
-- `scripting` — injects the picker only when **Select garment from this page** is pressed.
+- `scripting` — injects the picker only when **Pick from this page** is pressed.
 - `storage` — saves non-image settings and recoverable job state; images stay in IndexedDB.
 - `contextMenus` — adds **Try this on with Virtual Try-On** to image menus.
-- Optional backend origins — build-time development/production API origins only; requested on Generate. No blanket website access is installed.
+- Optional HTTP/HTTPS retailer origins are declared only as optional. The picker first tries current-tab `activeTab` access, then asks only for the current retailer origin when needed; denial leaves local upload available.
+- Optional backend origins — build-time development/production API origins only; requested on Generate.
 
-No static `content_scripts` or broad shopping-site host permission exists. The extension does not scan pages in the background. All executable code is packaged locally and MV3 CSP allows scripts only from the extension.
+No static `content_scripts` or permanent all-sites access is installed. The extension does not scan pages in the background. The picker supports responsive and lazy images, product backgrounds, and dynamic galleries; it fetches image bytes directly when possible, with a crop of the selected visible product as fallback. All executable code is packaged locally and MV3 CSP allows scripts only from the extension.
 
 ## Privacy and security
 

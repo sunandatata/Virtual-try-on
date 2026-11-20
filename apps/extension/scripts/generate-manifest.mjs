@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 const apiOrigin = process.env.VITE_PRODUCTION_API_ORIGIN;
 const localApiOrigin = process.env.VITE_LOCAL_API_ORIGIN ?? (await readLocalApiOrigin());
-const optionalHosts = ['http://localhost:3000/*'];
+const optionalHosts = ['http://*/*', 'https://*/*', 'http://localhost:3000/*'];
 if (localApiOrigin) {
   const url = new URL(localApiOrigin);
   if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname)) {

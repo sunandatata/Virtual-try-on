@@ -27,6 +27,8 @@ describe('garment capture drafts', () => {
         hostname: 'shop.example',
         warnings: [],
       },
+      captureMethod: 'screenshot-crop',
+      captureSource: 'context-menu',
       now: 100,
     });
 
@@ -37,6 +39,8 @@ describe('garment capture drafts', () => {
       store: 'Example',
       sourcePageUrl: 'https://shop.example/dress',
       createdAt: 100,
+      captureMethod: 'screenshot-crop',
+      captureSource: 'context-menu',
     });
     expect(draft.imageFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(draft.duplicateKey).not.toContain('pass');
@@ -45,6 +49,8 @@ describe('garment capture drafts', () => {
       productName: 'Linen Dress',
       imageFingerprint: draft.imageFingerprint,
       metadata: draft.metadata,
+      captureMethod: 'screenshot-crop',
+      captureSource: 'context-menu',
     });
   });
 

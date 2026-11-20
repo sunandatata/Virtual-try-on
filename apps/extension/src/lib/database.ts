@@ -90,6 +90,8 @@ export type CaptureDraft = {
   category: GarmentCategory | null;
   imageFingerprint: string;
   duplicateKey: string;
+  captureMethod?: 'direct-image' | 'screenshot-crop' | 'manual-upload';
+  captureSource?: 'page-picker' | 'context-menu' | 'manual-upload';
   metadata?: ProductMetadata;
   createdAt: number;
   updatedAt: number;

@@ -277,6 +277,21 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
         </div>
         <DraftPreview draft={draft} />
       </div>
+      <p className="hint">
+        Captured via{' '}
+        {draft.captureSource === 'context-menu'
+          ? 'image context menu'
+          : draft.captureSource === 'page-picker'
+            ? 'page picker'
+            : 'manual upload'}
+        {' · '}
+        {draft.captureMethod === 'screenshot-crop'
+          ? 'cropped from the visible product image'
+          : draft.captureMethod === 'direct-image'
+            ? 'direct image bytes'
+            : 'uploaded image'}
+        .
+      </p>
       {draft.metadata?.warnings.map((warning) => (
         <p className="notice" key={warning}>
           {warning}
@@ -662,6 +677,7 @@ export function QueuePanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [captureError, setCaptureError] = useState('');
+  const [manualFallbackOpen, setManualFallbackOpen] = useState(false);
   const [activeBatch, setActiveBatch] = useState<GenerationBatch>();
   const [confirmBatch, setConfirmBatch] = useState(false);
   const [batchError, setBatchError] = useState('');
@@ -857,13 +873,20 @@ export function QueuePanel({
           <button
             className="button primary"
             onClick={() =>
-              void onSelectFromPage?.().then((reason) => setCaptureError(reason ?? ''))
+              void onSelectFromPage?.().then((reason) => {
+                setCaptureError(reason ?? '');
+                if (reason) setManualFallbackOpen(true);
+              })
             }
             disabled={!onSelectFromPage}
           >
             Pick from this page
           </button>
-          <details className="manual-image-fallback">
+          <details
+            className="manual-image-fallback"
+            open={manualFallbackOpen}
+            onToggle={(event) => setManualFallbackOpen(event.currentTarget.open)}
+          >
             <summary>Can’t select an image? Use a local image</summary>
             <label className="button secondary no-margin queue-upload-button">
               Choose garment image

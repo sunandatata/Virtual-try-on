@@ -90,13 +90,30 @@ export const productMetadataSchema = z.object({
 });
 export type ProductMetadata = z.infer<typeof productMetadataSchema>;
 
+export const pickerCaptureSchema = z.object({
+  rect: z.object({
+    x: z.number().finite(),
+    y: z.number().finite(),
+    width: z.number().positive(),
+    height: z.number().positive(),
+  }),
+  viewport: z.object({
+    width: z.number().positive(),
+    height: z.number().positive(),
+  }),
+});
+export type PickerCapture = z.infer<typeof pickerCaptureSchema>;
+
 export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('OPEN_PICKER') }),
+  z.object({ type: z.literal('START_PAGE_PICKER'), tabId: z.number().int().positive() }),
+  z.object({ type: z.literal('GET_CONTEXT_IMAGE_DETAILS'), src: z.string().min(1).max(4096) }),
   z.object({ type: z.literal('PICKER_CANCELLED') }),
   z.object({
     type: z.literal('GARMENT_SELECTED'),
     image: imageReferenceSchema,
     metadata: productMetadataSchema,
+    capture: pickerCaptureSchema.optional(),
   }),
   z.object({
     type: z.literal('GARMENT_BYTES'),

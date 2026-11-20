@@ -8,6 +8,8 @@ export type CreateCaptureDraftInput = {
   sourceImageUrl?: string;
   sourcePageUrl?: string;
   metadata?: ProductMetadata;
+  captureMethod?: CaptureDraft['captureMethod'];
+  captureSource?: CaptureDraft['captureSource'];
   now?: number;
 };
 
@@ -80,6 +82,8 @@ export async function createCaptureDraft(input: CreateCaptureDraftInput): Promis
     category: null,
     imageFingerprint,
     duplicateKey,
+    captureMethod: input.captureMethod ?? 'manual-upload',
+    captureSource: input.captureSource ?? 'manual-upload',
     metadata: input.metadata,
     createdAt: now,
     updatedAt: now,

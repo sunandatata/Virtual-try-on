@@ -103,7 +103,7 @@ function metaContent(document: Document, ...selectors: string[]): string | undef
   return undefined;
 }
 
-function nearbyRoot(image: HTMLImageElement): Element {
+function nearbyRoot(image: HTMLElement): Element {
   return (
     image.closest('[itemtype*="Product"], [data-product], article, main, section') ??
     image.parentElement ??
@@ -111,12 +111,12 @@ function nearbyRoot(image: HTMLImageElement): Element {
   );
 }
 
-function nearbyHeading(image: HTMLImageElement): string | undefined {
+function nearbyHeading(image: HTMLElement): string | undefined {
   const root = nearbyRoot(image);
   return root.querySelector<HTMLElement>('h1, h2, h3, [itemprop="name"]')?.textContent ?? undefined;
 }
 
-function nearbyPrices(image: HTMLImageElement): string[] {
+function nearbyPrices(image: HTMLElement): string[] {
   const root = nearbyRoot(image);
   const explicit = [...root.querySelectorAll<HTMLElement>('[itemprop="price"], [class*="price"]')]
     .flatMap((element) => [element.getAttribute('content'), element.textContent])
@@ -128,12 +128,18 @@ function nearbyPrices(image: HTMLImageElement): string[] {
 
 export function extractProductMetadata(
   document: Document,
-  selectedImage: HTMLImageElement,
+  selectedImage: HTMLElement,
   rawPageUrl = document.location.href,
+  selectedSource?: string,
 ): ProductMetadata {
   const pageUrl = safePageUrl(rawPageUrl);
   const products = structuredProducts(document);
-  const product = matchingProduct(products, selectedImage.currentSrc || selectedImage.src);
+  const selectedSrc =
+    selectedSource ??
+    (selectedImage.tagName.toLowerCase() === 'img'
+      ? (selectedImage as HTMLImageElement).currentSrc || (selectedImage as HTMLImageElement).src
+      : '');
+  const product = matchingProduct(products, selectedSrc);
   const warnings: string[] = [];
   const ogName = metaContent(document, 'meta[property="og:title"]');
   const nearbyName = nearbyHeading(selectedImage);
@@ -162,7 +168,13 @@ export function extractProductMetadata(
     suggestion(jsonName, 'json-ld', 'high') ??
     suggestion(ogName, 'open-graph', 'medium') ??
     suggestion(nearbyName, 'nearby-content', 'medium') ??
-    suggestion(selectedImage.alt, 'image-alt', 'low') ??
+    suggestion(
+      selectedImage.tagName.toLowerCase() === 'img'
+        ? (selectedImage as HTMLImageElement).alt
+        : (selectedImage.getAttribute('aria-label') ?? selectedImage.getAttribute('title')),
+      'image-alt',
+      'low',
+    ) ??
     suggestion(pageTitle, 'page-title', 'low');
   const displayedPrice =
     suggestion(jsonPrice, 'json-ld', 'high', 100) ??

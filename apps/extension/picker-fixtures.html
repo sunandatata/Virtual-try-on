@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Synthetic retailer picker fixtures</title>
+    <style>
+      :root {
+        font:
+          16px/1.45 system-ui,
+          sans-serif;
+        color: #30262a;
+        background: #f6f1eb;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      header,
+      section {
+        max-width: 1100px;
+        margin: 0 auto 22px;
+      }
+      header,
+      article,
+      .gallery,
+      .tile-grid {
+        background: white;
+        border: 1px solid #ddd4cb;
+        border-radius: 16px;
+        padding: 18px;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: minmax(110px, 1fr) minmax(240px, 3fr);
+        gap: 16px;
+      }
+      .thumbs {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+      .thumbs img {
+        width: 54px;
+        height: 68px;
+        object-fit: cover;
+      }
+      .hero {
+        width: min(100%, 480px);
+        height: 500px;
+        object-fit: contain;
+      }
+      .tile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+      }
+      .product-tile,
+      .protected-image,
+      canvas {
+        width: 300px;
+        height: 390px;
+        max-width: 100%;
+        object-fit: cover;
+      }
+      .background-product {
+        background: center / contain no-repeat url('/fixture/top.png');
+      }
+      .swatches {
+        display: flex;
+        gap: 8px;
+      }
+      .swatches button {
+        width: 26px;
+        height: 26px;
+        border: 1px solid #555;
+        border-radius: 50%;
+      }
+      #dynamic-gallery img {
+        width: 280px;
+        height: 350px;
+        object-fit: contain;
+      }
+      iframe {
+        width: 340px;
+        height: 430px;
+        border: 1px solid #c8b9ad;
+      }
+      a {
+        color: #684052;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">Synthetic retailer compatibility page</p>
+      <h1>Local test products</h1>
+      <p>
+        All imagery is generated artwork in this repository. No retailer assets or page data are
+        used.
+      </p>
+    </header>
+
+    <section aria-labelledby="bloomchic-fixture">
+      <h2 id="bloomchic-fixture">BloomChic-style product gallery</h2>
+      <article itemscope itemtype="https://schema.org/Product">
+        <meta itemprop="name" content="Synthetic plum occasion dress" />
+        <meta itemprop="color" content="Plum" />
+        <div class="gallery">
+          <div class="thumbs" aria-label="Product thumbnails">
+            <img src="/fixture/dress.png" alt="Small dress thumbnail" />
+            <img src="/fixture/top.png" alt="Small alternate thumbnail" />
+          </div>
+          <a href="#dress" aria-label="Open the synthetic dress gallery">
+            <picture>
+              <source
+                media="(min-width: 600px)"
+                srcset="/fixture/dress.png 1x, /fixture/top.png 2x"
+              />
+              <img
+                id="responsive-gallery-image"
+                class="hero"
+                src="/fixture/dress.png"
+                srcset="/fixture/dress.png 640w, /fixture/top.png 1280w"
+                sizes="(min-width: 700px) 480px, 90vw"
+                data-zoom-image="/fixture/dress.png"
+                alt="Synthetic plum occasion dress"
+                itemprop="image"
+              />
+            </picture>
+          </a>
+        </div>
+        <h3>Synthetic plum occasion dress</h3>
+        <p>$42.00</p>
+      </article>
+    </section>
+
+    <section aria-labelledby="myntra-fixture">
+      <h2 id="myntra-fixture">Myntra-style lazy-loaded gallery</h2>
+      <article>
+        <img
+          id="lazy-gallery-image"
+          class="product-tile"
+          src="/icons/icon-16.png"
+          data-src="/fixture/top.png"
+          data-srcset="/fixture/top.png 480w, /fixture/dress.png 1200w"
+          alt="Synthetic teal embroidered top"
+        />
+        <h3>Synthetic teal embroidered top</h3>
+      </article>
+    </section>
+
+    <section aria-labelledby="nykaa-fixture">
+      <h2 id="nykaa-fixture">Nykaa-style beauty product and shade swatches</h2>
+      <article>
+        <img
+          id="synthetic-lipstick"
+          class="product-tile"
+          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='700'%3E%3Crect width='500' height='700' fill='%23f1e7df'/%3E%3Crect x='175' y='170' width='150' height='400' rx='28' fill='%23744858'/%3E%3Cpath d='M175 170l45-110h60l45 110z' fill='%23b74c68'/%3E%3C/svg%3E"
+          alt="Synthetic velvet lipstick in berry shade"
+        />
+        <h3>Synthetic velvet lipstick</h3>
+        <p>Selected shade: Berry Wine</p>
+        <div class="swatches" aria-label="Shade choices">
+          <button
+            aria-label="Berry Wine shade"
+            title="Berry Wine"
+            style="background: #842d45"
+          ></button>
+          <button
+            aria-label="Warm Rose shade"
+            title="Warm Rose"
+            style="background: #b75e67"
+          ></button>
+          <button
+            aria-label="Soft Nude shade"
+            title="Soft Nude"
+            style="background: #bf8879"
+          ></button>
+        </div>
+      </article>
+    </section>
+
+    <section aria-labelledby="background-fixture">
+      <h2 id="background-fixture">CSS background product tile</h2>
+      <div class="tile-grid">
+        <div
+          class="background-product product-tile"
+          aria-label="Synthetic teal top tile"
+          title="Synthetic teal top"
+        ></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="protected-fixture">
+      <h2 id="protected-fixture">Protected cross-origin and canvas cases</h2>
+      <div class="tile-grid">
+        <img
+          id="protected-product"
+          class="protected-image"
+          src="https://protected-cdn.invalid/signed/synthetic-product.jpg"
+          alt="Synthetic protected retailer image"
+        />
+        <canvas
+          id="canvas-product"
+          width="600"
+          height="780"
+          aria-label="Synthetic canvas-rendered product"
+        ></canvas>
+      </div>
+    </section>
+
+    <section aria-labelledby="dynamic-fixture">
+      <h2 id="dynamic-fixture">Dynamic gallery and blob URL</h2>
+      <button id="add-gallery-image" type="button">Load another synthetic product image</button>
+      <div id="dynamic-gallery" class="tile-grid"></div>
+      <div id="blob-gallery" class="tile-grid"></div>
+    </section>
+
+    <section aria-labelledby="frame-fixture">
+      <h2 id="frame-fixture">Same-origin frame</h2>
+      <iframe id="same-origin-frame" title="Synthetic same-origin product gallery"></iframe>
+    </section>
+
+    <script type="module" src="/src/content.ts"></script>
+    <script type="module" src="/src/picker-fixture.ts"></script>
+  </body>
+</html>

@@ -20,6 +20,7 @@ import {
   migrateLegacyGarmentToQueue,
   migrateLegacyPersonToProfile,
 } from '../lib/storage-migrations';
+import { preparePagePicker } from '../lib/page-picker';
 import { deleteImage, getImage, saveImage } from '../lib/storage';
 import type { ImageSlot, StoredImage } from '../lib/storage';
 import { QueuePanel } from './QueuePanel';
@@ -138,6 +139,7 @@ export function App() {
   const [category, setCategory] = useState<GarmentCategory>('dress');
   const [generation, setGeneration] = useState<GenerationState>(idleGeneration);
   const [notice, setNotice] = useState('');
+  const [manualFallbackOpen, setManualFallbackOpen] = useState(false);
   const [activeView, setActiveView] = useState<'queue' | 'compare' | 'profiles' | 'try-on'>(
     'queue',
   );
@@ -316,17 +318,34 @@ export function App() {
 
   const selectFromPage = async () => {
     setNotice('');
-    const response = (await chrome.runtime.sendMessage({ type: 'OPEN_PICKER' })) as {
-      ok: boolean;
-      error?: string;
-    };
-    if (!response?.ok) {
-      const reason = response?.error ?? 'Could not start garment selection.';
+    try {
+      const prepared = await preparePagePicker();
+      if (!prepared.ok) {
+        setNotice(prepared.error);
+        setManualFallbackOpen(true);
+        return prepared.error;
+      }
+      const response = (await chrome.runtime.sendMessage({
+        type: 'START_PAGE_PICKER',
+        tabId: prepared.tabId,
+      })) as { ok?: boolean; error?: string };
+      if (!response?.ok) {
+        const reason = response?.error ?? 'Could not start garment selection.';
+        setNotice(reason);
+        setManualFallbackOpen(true);
+        return reason;
+      }
+      setManualFallbackOpen(false);
+      setNotice(
+        'Selection mode is active on the shopping page. Click a highlighted product image.',
+      );
+      return undefined;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Could not start garment selection.';
       setNotice(reason);
+      setManualFallbackOpen(true);
       return reason;
     }
-    setNotice('Selection mode is active on the shopping page.');
-    return undefined;
   };
 
   const generate = async () => {
@@ -570,10 +589,14 @@ export function App() {
               Pick product from this page
             </button>
             <p className="hint">
-              Choose the product image on the open shop page. We’ll capture it and read available
-              product details into your queue.
+              Choose a product image on the open shop page. Chrome may ask to let Virtual Try-On
+              read this store page; access is requested only when you pick from that site.
             </p>
-            <details className="manual-image-fallback">
+            <details
+              className="manual-image-fallback"
+              open={manualFallbackOpen}
+              onToggle={(event) => setManualFallbackOpen(event.currentTarget.open)}
+            >
               <summary>Can’t select an image? Use a local image</summary>
               <ImageUpload
                 label="Choose a garment image"
