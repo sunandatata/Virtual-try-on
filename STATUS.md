@@ -1,5 +1,50 @@
 # Project Status
 
+## Takeover audit and multi-phase implementation - 2026-11-26
+
+**Completed by takeover agent (4 commits, 57085e9 → eccf552):**
+
+### Phase 1 – Protect and understand current work
+- Inspected all uncommitted changes (picker-tab-context repair), read all documentation, ran 167 tests (all pass), ran strict typecheck (clean).
+
+### Phase 2 – Tab-bound side-panel picker repair (commit 57085e9)
+- Root cause: `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` opened the panel globally with no record of which shopping tab the user was on. When `tab.url` was absent (Chrome hides it until `activeTab` is used), `preparePagePicker` returned early with the misleading "Chrome did not share this tab's address" error.
+- Fix: `picker-tab-context.ts` saves `{ tabId, windowId, url?, timestamp }` in `chrome.storage.session` on every toolbar click. `openPickerSidePanelForTab` sets a tab-specific side-panel URL (`sidepanel.html?tabId=<n>`). `resolvePickerTab` reads that context and returns the correct shopping tab even when `tab.url` is absent, then attempts `activeTab` injection before giving up.
+- Added 180-line unit suite for all context helpers; expanded page-picker tests; added Playwright E2E skeleton.
+
+### Phase 5 – Product taxonomy and classifier (commit e86e1f0)
+- Shared: added `apparelCategorySchema`, `accessoryCategorySchema`, `beautyCategorySchema`, `productGroupSchema`, `productClassificationSchema`, `apparelToProviderCategory()`.
+- `product-classifier.ts`: keyword/hostname classifier returning `{group, category, confidence, evidence}` for apparel/accessory/beauty/unsupported products. 15-test suite.
+
+### Phase 6 – Face profile support (commit e86e1f0)
+- `BodyProfile.profileType: 'body'|'face'` added to database schema.
+- DB bumped to version 7; v6→v7 migration backfills `profileType='body'` on all existing profiles.
+- `body-profile-storage.ts`: `createBodyProfile` accepts `profileType`; `listBodyProfilesByType`, `getDefaultFaceProfile` exported.
+
+### Phase 8 – Beauty provider mock (commit e86e1f0)
+- `BeautyTryOnProvider` interface + `MockBeautyTryOnProvider` (clearly labelled DEMO SVG).
+- `POST /api/try-on/beauty` endpoint accepting face+product images and beautyCategory/shadeHex.
+- `beauty-mock` token kind added to JWT discriminated union.
+- Status endpoint handles beauty-mock tokens.
+
+### Phase 5 UI – Classifier in draft review (commit 2324476)
+- `DraftReview` in QueuePanel runs classifier on draft metadata.
+- Apparel: auto-populates category dropdown, shows confidence.
+- Beauty/accessory: notice explains those try-on engines are coming/mock-only.
+- Unsupported: explains the product cannot be visually tried on; item still saveable for reference.
+- `commitCaptureDraft` now accepts `category: null`; sets status 'saved' (not 'ready') for null-category items.
+
+**Verification:** 187 unit tests pass; strict typecheck clean; lint clean; format clean; production build succeeds.
+
+**Remaining manual verification required:**
+- Load unpacked extension in Chrome, navigate to a shopping retailer, click toolbar icon, click "Pick from this page" — confirm picker activates without the "Chrome did not share this tab's address" error.
+- Select a dress, top, jeans, sneakers, and lipstick — confirm classifier auto-fills category for apparel, shows "accessory" / "beauty" notices for the others.
+- Confirm "Add to queue" works; confirm batch generation submits to API for apparel items.
+
+**Credentials still required for real try-on:**
+- `FASHN_API_KEY`: real clothing try-on (replace mock)
+- Beauty SDK license (Banuba/ModiFace/Perfect Corp): real beauty try-on
+
 ## Universal product picker repair - 2026-11-19 (in progress)
 
 - The picker attempts current-tab `activeTab` injection first, and requests only the current HTTP/HTTPS retailer origin after an injection failure. Restricted browser pages, PDFs, permission denial, and injection failures return specific fallback guidance.
