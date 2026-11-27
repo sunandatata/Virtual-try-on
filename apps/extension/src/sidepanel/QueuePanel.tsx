@@ -1,5 +1,6 @@
-import type { GarmentCategory } from '@virtual-try-on/shared';
+import type { GarmentCategory, ProductClassification } from '@virtual-try-on/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { classifyProduct } from '../lib/product-classifier';
 import { createCaptureDraft } from '../lib/capture';
 import { processImage } from '../lib/images';
 import { getActiveGenerationBatch } from '../lib/batch-storage';
@@ -227,18 +228,53 @@ function suggestionLabel(draft: CaptureDraft, field: 'productName' | 'displayedP
   return `Suggested from ${source} (${suggestion.confidence} confidence).`;
 }
 
+function classificationNotice(c: ProductClassification): string | null {
+  if (c.group === 'beauty') {
+    return 'Beauty product detected. Use the beauty try-on (coming soon) for makeup items. You can still save this to your queue for reference.';
+  }
+  if (c.group === 'accessory') {
+    return 'Accessory detected. Accessory try-on is not yet supported. You can still save this to your queue for reference.';
+  }
+  if (c.group === 'unsupported') {
+    return 'This product cannot be visually tried on (e.g. perfume, electronics, skincare). You can save it for reference but generation will not be available.';
+  }
+  return null;
+}
+
+function apparelCategoryForGeneration(c: ProductClassification): GarmentCategory | '' {
+  if (c.group !== 'apparel' || !c.category) return '';
+  const map: Record<string, GarmentCategory> = {
+    dress: 'dress',
+    'full-outfit': 'dress',
+    top: 'top',
+    outerwear: 'top',
+    bottom: 'bottom',
+  };
+  return map[c.category] ?? '';
+}
+
 function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => void }) {
   const [productName, setProductName] = useState(draft.productName);
   const [store, setStore] = useState(draft.store);
   const [displayedPrice, setDisplayedPrice] = useState(draft.displayedPrice ?? '');
   const [color, setColor] = useState(draft.color ?? '');
-  const [category, setCategory] = useState<GarmentCategory | ''>(draft.category ?? '');
+  const [classification] = useState<ProductClassification | null>(() => {
+    if (!draft.metadata) return null;
+    try { return classifyProduct(draft.metadata); } catch { return null; }
+  });
+  const [category, setCategory] = useState<GarmentCategory | ''>(() => {
+    if (draft.category) return draft.category;
+    if (classification?.group === 'apparel') return apparelCategoryForGeneration(classification);
+    return '';
+  });
   const [duplicate, setDuplicate] = useState<QueueItem>();
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const isNonApparel = classification !== null && classification.group !== 'apparel';
+
   const commit = async (duplicateOverrideOf?: string) => {
-    if (!productName.trim() || !store.trim() || !category) return;
+    if (!productName.trim() || !store.trim() || (!category && !isNonApparel)) return;
     setSaving(true);
     setError('');
     try {
@@ -248,7 +284,7 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
         store: store.trim(),
         displayedPrice: displayedPrice.trim() || undefined,
         color: color.trim() || undefined,
-        category,
+        category: category || null,
         duplicateOverrideOf,
       });
       onSaved();
@@ -341,20 +377,45 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
           <small>{suggestionLabel(draft, 'color')}</small>
         </label>
       </div>
-      <label className="field compact-field">
-        Garment category
-        <select
-          aria-label="Garment category"
-          value={category}
-          onChange={(event) => setCategory(event.target.value as GarmentCategory | '')}
-        >
-          <option value="">Choose a category</option>
-          <option value="dress">Dress / one-piece</option>
-          <option value="top">Top</option>
-          <option value="bottom">Bottom</option>
-        </select>
-        <small>Required for generation; this is never guessed.</small>
-      </label>
+      {classification && (
+        <div className="classification-hint" aria-live="polite">
+          <strong>
+            Detected:{' '}
+            {classification.group === 'apparel' && classification.category
+              ? `${classification.category} (apparel)`
+              : classification.group}
+          </strong>
+          <span className={`confidence confidence-${classification.confidence}`}>
+            {classification.confidence} confidence
+          </span>
+          {classification.evidence[0] && (
+            <small>Evidence: {classification.evidence[0]}</small>
+          )}
+          {classificationNotice(classification) && (
+            <p className="notice">{classificationNotice(classification)}</p>
+          )}
+        </div>
+      )}
+      {(!classification || classification.group === 'apparel') && (
+        <label className="field compact-field">
+          Garment category
+          <select
+            aria-label="Garment category"
+            value={category}
+            onChange={(event) => setCategory(event.target.value as GarmentCategory | '')}
+          >
+            <option value="">Choose a category</option>
+            <option value="dress">Dress / one-piece</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+          </select>
+          <small>
+            {classification
+              ? `Auto-detected as "${classification.category ?? 'unknown'}" (${classification.confidence} confidence). Adjust if needed.`
+              : 'Required for generation.'}
+          </small>
+        </label>
+      )}
       {duplicate && (
         <div className="duplicate-warning" role="alert">
           <strong>This garment may already be in your queue.</strong>
@@ -372,7 +433,7 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
         <div className="button-row">
           <button
             className="button primary"
-            disabled={saving || !productName.trim() || !store.trim() || !category}
+            disabled={saving || !productName.trim() || !store.trim() || (!category && !isNonApparel)}
             onClick={() => void reviewDuplicates()}
           >
             {saving ? 'Saving…' : 'Add to queue'}

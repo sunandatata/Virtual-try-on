@@ -41,7 +41,7 @@ export type CommitCaptureDraftInput = Pick<
   'productName' | 'store' | 'displayedPrice' | 'color'
 > & {
   draftId: string;
-  category: NonNullable<QueueItem['category']>;
+  category: QueueItem['category'];
   duplicateOverrideOf?: string;
   now?: number;
 };
@@ -133,7 +133,7 @@ export async function commitCaptureDraft(input: CommitCaptureDraftInput): Promis
     addedAt: now,
     updatedAt: now,
     sortIndex: (lastItem?.value.sortIndex ?? -1) + 1,
-    status: 'ready',
+    status: input.category ? 'ready' : 'saved',
     job: idleJob(now),
     favorite: false,
     collectionIds: [],
