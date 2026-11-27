@@ -125,6 +125,8 @@ export type GarmentCollection = {
   updatedAt: number;
 };
 
+export type ProfileType = 'body' | 'face';
+
 export type BodyProfile = {
   id: string;
   profileName: string;
@@ -139,6 +141,8 @@ export type BodyProfile = {
   imageUpdatedAt: number;
   isDefault: boolean;
   consent: boolean;
+  /** 'body' (for clothing/accessories) or 'face' (for makeup). Added in DB v7. */
+  profileType: ProfileType;
 };
 
 interface VirtualTryOnDatabase extends DBSchema {
@@ -195,12 +199,13 @@ interface VirtualTryOnDatabase extends DBSchema {
     value: BodyProfile;
     indexes: {
       'by-created-at': number;
+      'by-profile-type': ProfileType;
     };
   };
 }
 
 export const DATABASE_NAME = 'virtual-try-on';
-export const DATABASE_VERSION = 6;
+export const DATABASE_VERSION = 7;
 
 let databasePromise: Promise<IDBPDatabase<VirtualTryOnDatabase>> | undefined;
 
@@ -241,6 +246,13 @@ export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
       if (!database.objectStoreNames.contains('bodyProfiles')) {
         const profiles = database.createObjectStore('bodyProfiles', { keyPath: 'id' });
         profiles.createIndex('by-created-at', 'createdAt');
+        profiles.createIndex('by-profile-type', 'profileType');
+      } else if (oldVersion < 7) {
+        // Add the by-profile-type index on upgrade from v6
+        const profileStore = transaction.objectStore('bodyProfiles');
+        if (!profileStore.indexNames.contains('by-profile-type')) {
+          profileStore.createIndex('by-profile-type', 'profileType');
+        }
       }
       if (oldVersion > 0 && oldVersion < 6) {
         let cursor = await transaction.objectStore('bodyProfiles').openCursor();
@@ -249,7 +261,17 @@ export function openDatabase(): Promise<IDBPDatabase<VirtualTryOnDatabase>> {
             ...cursor.value,
             imageUpdatedAt: cursor.value.updatedAt,
             consent: false,
+            profileType: 'body',
           });
+          cursor = await cursor.continue();
+        }
+      } else if (oldVersion === 6) {
+        // Migrate v6 → v7: add profileType field to existing profiles
+        let cursor = await transaction.objectStore('bodyProfiles').openCursor();
+        while (cursor) {
+          if (!cursor.value.profileType) {
+            await cursor.update({ ...cursor.value, profileType: 'body' });
+          }
           cursor = await cursor.continue();
         }
       }

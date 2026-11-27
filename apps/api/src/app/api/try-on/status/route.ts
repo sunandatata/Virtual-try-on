@@ -1,6 +1,7 @@
 import { apiError, corsHeaders, optionsResponse, verifyAccess, verifyOrigin } from '@/lib/http';
 import { FashnTryOnProvider } from '@/lib/providers/fashn';
 import { MockTryOnProvider } from '@/lib/providers/mock';
+import { MockBeautyTryOnProvider } from '@/lib/providers/beauty-mock';
 import { signToken, verifyToken } from '@/lib/token';
 
 export const runtime = 'nodejs';
@@ -21,11 +22,17 @@ export async function GET(request: Request) {
   try {
     const payload = verifyToken(token);
     if (payload.kind === 'result') throw new Error('Wrong token type');
-    const provider = payload.kind === 'mock' ? new MockTryOnProvider() : new FashnTryOnProvider();
-    const status = await provider.status(
-      payload.kind === 'mock' ? 'demo' : payload.providerJobId,
-      payload.kind === 'mock' ? { readyAt: payload.readyAt, fail: payload.fail } : undefined,
-    );
+    let status;
+    if (payload.kind === 'beauty-mock') {
+      const beautyProvider = new MockBeautyTryOnProvider();
+      status = await beautyProvider.status('beauty-demo', { readyAt: payload.readyAt, fail: payload.fail });
+    } else {
+      const provider = payload.kind === 'mock' ? new MockTryOnProvider() : new FashnTryOnProvider();
+      status = await provider.status(
+        payload.kind === 'mock' ? 'demo' : payload.providerJobId,
+        payload.kind === 'mock' ? { readyAt: payload.readyAt, fail: payload.fail } : undefined,
+      );
+    }
     if (status.status !== 'succeeded' || status.isDemo) {
       return Response.json({ ok: true, ...status }, { headers: cors });
     }

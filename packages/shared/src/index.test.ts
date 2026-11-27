@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { extensionMessageSchema, toProviderCategory } from './index.js';
+import {
+  apparelToProviderCategory,
+  extensionMessageSchema,
+  productClassificationSchema,
+  toProviderCategory,
+} from './index.js';
 
 describe('category mapping', () => {
   it.each([
@@ -8,6 +13,50 @@ describe('category mapping', () => {
     ['bottom', 'bottoms'],
   ] as const)('maps %s to %s', (input, expected) => {
     expect(toProviderCategory(input)).toBe(expected);
+  });
+});
+
+describe('apparel category mapping', () => {
+  it.each([
+    ['outerwear', 'tops'],
+    ['full-outfit', 'one-pieces'],
+  ] as const)('maps extended apparel %s to provider category %s', (input, expected) => {
+    expect(apparelToProviderCategory(input)).toBe(expected);
+  });
+});
+
+describe('product classification schema', () => {
+  it('accepts a high-confidence apparel classification', () => {
+    expect(
+      productClassificationSchema.safeParse({
+        group: 'apparel',
+        category: 'dress',
+        confidence: 'high',
+        evidence: ['title contains "dress"'],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts unsupported with null category', () => {
+    expect(
+      productClassificationSchema.safeParse({
+        group: 'unsupported',
+        category: null,
+        confidence: 'high',
+        evidence: ['product is a perfume'],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects an unknown group', () => {
+    expect(
+      productClassificationSchema.safeParse({
+        group: 'electronics',
+        category: null,
+        confidence: 'high',
+        evidence: [],
+      }).success,
+    ).toBe(false);
   });
 });
 

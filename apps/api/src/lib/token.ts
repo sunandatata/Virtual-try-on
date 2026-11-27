@@ -5,6 +5,7 @@ const tokenPayloadSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('mock'), readyAt: z.number(), fail: z.boolean(), exp: z.number() }),
   z.object({ kind: z.literal('fashn'), providerJobId: z.string(), exp: z.number() }),
   z.object({ kind: z.literal('result'), url: z.string().url(), exp: z.number() }),
+  z.object({ kind: z.literal('beauty-mock'), readyAt: z.number(), fail: z.boolean(), exp: z.number() }),
 ]);
 export type TokenPayload = z.infer<typeof tokenPayloadSchema>;
 

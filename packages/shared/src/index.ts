@@ -3,14 +3,75 @@ import { z } from 'zod';
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
+// Apparel subcategories
+export const apparelCategorySchema = z.enum([
+  'dress',
+  'top',
+  'bottom',
+  'outerwear',
+  'full-outfit',
+]);
+export type ApparelCategory = z.infer<typeof apparelCategorySchema>;
+
+// Accessory subcategories
+export const accessoryCategorySchema = z.enum([
+  'shoes',
+  'hat',
+  'bag',
+  'necklace',
+  'earrings',
+  'accessory',
+]);
+export type AccessoryCategory = z.infer<typeof accessoryCategorySchema>;
+
+// Beauty subcategories
+export const beautyCategorySchema = z.enum([
+  'lipstick',
+  'lip-gloss',
+  'lip-liner',
+  'concealer',
+  'foundation',
+  'blush',
+  'eyeshadow',
+  'eyeliner',
+]);
+export type BeautyCategory = z.infer<typeof beautyCategorySchema>;
+
+// Legacy narrow schema kept for backward compatibility with existing queue items
 export const garmentCategorySchema = z.enum(['dress', 'top', 'bottom']);
 export type GarmentCategory = z.infer<typeof garmentCategorySchema>;
+
+// Product groups that determine which provider to use
+export const productGroupSchema = z.enum(['apparel', 'accessory', 'beauty', 'unsupported']);
+export type ProductGroup = z.infer<typeof productGroupSchema>;
+
+// Full product classification result
+export const productClassificationSchema = z.object({
+  group: productGroupSchema,
+  category: z
+    .union([apparelCategorySchema, accessoryCategorySchema, beautyCategorySchema])
+    .nullable(),
+  confidence: z.enum(['high', 'medium', 'low']),
+  evidence: z.array(z.string().min(1).max(200)).max(10),
+});
+export type ProductClassification = z.infer<typeof productClassificationSchema>;
 
 export const providerCategorySchema = z.enum(['one-pieces', 'tops', 'bottoms']);
 export type ProviderCategory = z.infer<typeof providerCategorySchema>;
 
 export function toProviderCategory(category: GarmentCategory): ProviderCategory {
   return { dress: 'one-pieces', top: 'tops', bottom: 'bottoms' }[category] as ProviderCategory;
+}
+
+export function apparelToProviderCategory(category: ApparelCategory): ProviderCategory {
+  const map: Record<ApparelCategory, ProviderCategory> = {
+    dress: 'one-pieces',
+    'full-outfit': 'one-pieces',
+    top: 'tops',
+    outerwear: 'tops',
+    bottom: 'bottoms',
+  };
+  return map[category];
 }
 
 export const generationStatusSchema = z.enum([
@@ -87,6 +148,7 @@ export const productMetadataSchema = z.object({
   sourceUrl: z.string().url().max(2048),
   hostname: z.string().min(1).max(253),
   warnings: z.array(z.string().min(1).max(300)).max(10),
+  classification: productClassificationSchema.optional(),
 });
 export type ProductMetadata = z.infer<typeof productMetadataSchema>;
 

@@ -74,6 +74,7 @@ export async function migrateLegacyPersonToProfile(): Promise<LegacyPersonMigrat
       imageUpdatedAt: legacyPerson.updatedAt || now,
       isDefault: true,
       consent: false,
+      profileType: 'body' as const,
     }),
     metadataStore.put({
       key: LEGACY_PERSON_MIGRATION,

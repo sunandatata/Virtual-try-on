@@ -1,7 +1,7 @@
 import { openDatabase } from './database';
-import type { BodyProfile } from './database';
+import type { BodyProfile, ProfileType } from './database';
 
-export type { BodyProfile } from './database';
+export type { BodyProfile, ProfileType } from './database';
 
 export type BodyProfileImage = Pick<
   BodyProfile,
@@ -29,11 +29,20 @@ export async function getDefaultBodyProfile(): Promise<BodyProfile | undefined> 
   return (await listBodyProfiles()).find((profile) => profile.isDefault);
 }
 
+export async function listBodyProfilesByType(type: ProfileType): Promise<BodyProfile[]> {
+  return (await (await openDatabase()).getAllFromIndex('bodyProfiles', 'by-profile-type', type));
+}
+
+export async function getDefaultFaceProfile(): Promise<BodyProfile | undefined> {
+  return (await listBodyProfilesByType('face')).find((p) => p.isDefault);
+}
+
 export async function createBodyProfile(input: {
   profileName: string;
   description?: string;
   image: BodyProfileImage;
   makeDefault?: boolean;
+  profileType?: ProfileType;
   now?: number;
 }): Promise<BodyProfile> {
   const profileName = clean(input.profileName, 80);
@@ -53,6 +62,7 @@ export async function createBodyProfile(input: {
     imageUpdatedAt: now,
     isDefault: makeDefault,
     consent: false,
+    profileType: input.profileType ?? 'body',
   };
   if (makeDefault) {
     await Promise.all(
