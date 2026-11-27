@@ -319,7 +319,9 @@ export function App() {
   const selectFromPage = async () => {
     setNotice('');
     try {
-      const prepared = await preparePagePicker();
+      const rawTabId = new URLSearchParams(window.location.search).get('tabId');
+      const panelTabId = rawTabId && /^\d+$/.test(rawTabId) ? Number(rawTabId) : undefined;
+      const prepared = await preparePagePicker(panelTabId);
       if (!prepared.ok) {
         setNotice(prepared.error);
         setManualFallbackOpen(true);

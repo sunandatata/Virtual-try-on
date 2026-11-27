@@ -7,6 +7,11 @@ import { createCaptureDraft } from './lib/capture';
 import { getSettings } from './lib/settings';
 import { saveImage } from './lib/storage';
 import { activatePagePicker } from './lib/page-picker';
+import {
+  openPickerSidePanelForTab,
+  removePickerToolbarContextForTab,
+  updatePickerToolbarContextUrl,
+} from './lib/picker-tab-context';
 import { loadGarmentImage } from './lib/garment-image';
 import type { PickerCapture } from '@virtual-try-on/shared';
 
@@ -51,10 +56,18 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+chrome.action.onClicked.addListener((tab) => {
+  void openPickerSidePanelForTab(tab).catch(() => undefined);
+});
 
-chrome.action.onClicked.addListener(async (tab) => {
-  if (tab.windowId !== undefined) await chrome.sidePanel.open({ windowId: tab.windowId });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void removePickerToolbarContextForTab(tabId);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url && tab.windowId !== undefined) {
+    void updatePickerToolbarContextUrl(tabId, tab.windowId, changeInfo.url);
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -62,7 +75,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 async function openPanel(tab?: chrome.tabs.Tab) {
-  if (tab?.windowId !== undefined) await chrome.sidePanel.open({ windowId: tab.windowId });
+  if (tab) await openPickerSidePanelForTab(tab);
 }
 
 async function storeRemoteGarment(

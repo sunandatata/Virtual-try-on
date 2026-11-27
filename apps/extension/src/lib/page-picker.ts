@@ -1,14 +1,22 @@
+import { resolvePickerTab } from './picker-tab-context';
+
 export type PagePickerResponse = { ok: true } | { ok: false; error: string };
 
 export type PreparePagePickerResponse =
-  { ok: true; tabId: number; isFixture: boolean } | { ok: false; error: string };
+  { ok: true; tabId: number; isFixture: boolean; url?: string } | { ok: false; error: string };
 
-const webStoreMessage =
-  'Chrome does not allow extensions to read the Chrome Web Store. Open the product on its retailer site instead.';
+const noContextMessage =
+  'Click the Virtual Try-On toolbar icon once while viewing this shopping page, then choose Pick from this page.';
 const restrictedMessage =
-  'Chrome protects browser pages and settings from extensions. Open a normal shopping page to pick a product.';
+  'Chrome does not allow product selection on this page. Open the retailer’s normal product page.';
+const permissionDeniedMessage =
+  'Virtual Try-On needs access to this store page to let you select a product. Allow access or upload an image.';
+const injectionFailedMessage =
+  'The product picker could not start on this page. You can retry or upload the product image.';
 const pdfMessage =
   'Chrome’s built-in PDF viewer cannot be used for product picking. Open the product listing page instead.';
+
+type PageInfo = { ok: true; url: string; title?: string } | { ok: false } | undefined;
 
 function isPdfTab(tab: chrome.tabs.Tab, url: URL): boolean {
   if (/\.pdf(?:$|[?#])/i.test(url.href)) return true;
@@ -17,70 +25,116 @@ function isPdfTab(tab: chrome.tabs.Tab, url: URL): boolean {
   return /\.pdf(?:$|[?#])/i.test(source);
 }
 
-export async function preparePagePicker(
-  chromeApi: typeof chrome = chrome,
-): Promise<PreparePagePickerResponse> {
-  let tab: chrome.tabs.Tab | undefined;
-  try {
-    [tab] = await chromeApi.tabs.query({ active: true, lastFocusedWindow: true });
-  } catch {
-    return {
-      ok: false,
-      error: 'Could not find the active tab. Switch to the shopping page and try again.',
-    };
-  }
-  if (tab?.id === undefined) {
-    return { ok: false, error: 'No active browser tab found. Switch to the shop page and retry.' };
-  }
-
+function classifyPage(
+  rawUrl: string | undefined,
+  tab: chrome.tabs.Tab,
+  chromeApi: typeof chrome,
+): { kind: 'fixture' | 'web'; url: URL } | { kind: 'restricted'; error: string } | undefined {
+  if (!rawUrl) return undefined;
   let url: URL;
   try {
-    if (!tab.url) throw new Error('Missing tab URL');
-    url = new URL(tab.url);
+    url = new URL(rawUrl);
   } catch {
-    return {
-      ok: false,
-      error: 'Chrome did not share this tab’s address. Refresh the shopping page and retry.',
-    };
+    return { kind: 'restricted', error: restrictedMessage };
   }
 
   const fixtureUrls = [
     chromeApi.runtime.getURL('fixture.html'),
     chromeApi.runtime.getURL('picker-fixtures.html'),
   ];
-  if (fixtureUrls.includes(tab.url)) {
-    return { ok: true, tabId: tab.id, isFixture: true };
+  if (fixtureUrls.includes(url.href)) return { kind: 'fixture', url };
+  if (
+    (url.hostname === 'chrome.google.com' && url.pathname.startsWith('/webstore')) ||
+    url.hostname === 'chromewebstore.google.com'
+  ) {
+    return { kind: 'restricted', error: restrictedMessage };
   }
-  if (url.hostname === 'chrome.google.com' && url.pathname.startsWith('/webstore')) {
-    return { ok: false, error: webStoreMessage };
-  }
-  if (url.hostname === 'chromewebstore.google.com') {
-    return { ok: false, error: webStoreMessage };
-  }
-  if (isPdfTab(tab, url)) return { ok: false, error: pdfMessage };
-  if (url.protocol === 'chrome:' || url.protocol === 'edge:' || url.protocol === 'about:') {
-    return { ok: false, error: restrictedMessage };
-  }
-  if (url.protocol === 'chrome-extension:' || url.protocol === 'devtools:') {
-    return { ok: false, error: restrictedMessage };
+  if (isPdfTab(tab, url)) return { kind: 'restricted', error: pdfMessage };
+  if (
+    ['chrome:', 'edge:', 'about:', 'chrome-extension:', 'devtools:', 'view-source:'].includes(
+      url.protocol,
+    )
+  ) {
+    return { kind: 'restricted', error: restrictedMessage };
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return {
-      ok: false,
-      error:
-        'This page type is not supported. Open the retailer’s HTTP or HTTPS product page instead.',
-    };
+    return { kind: 'restricted', error: restrictedMessage };
+  }
+  return { kind: 'web', url };
+}
+
+async function getTabUrl(tabId: number, chromeApi: typeof chrome): Promise<string | undefined> {
+  try {
+    return (await chromeApi.tabs.get(tabId)).url;
+  } catch {
+    return undefined;
+  }
+}
+
+async function getInjectedPageInfo(tabId: number, chromeApi: typeof chrome): Promise<PageInfo> {
+  try {
+    return (await chromeApi.tabs.sendMessage(tabId, { type: 'GET_PAGE_CONTEXT' })) as PageInfo;
+  } catch {
+    return undefined;
+  }
+}
+
+async function injectContentScript(tabId: number, chromeApi: typeof chrome): Promise<void> {
+  await chromeApi.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js'],
+  });
+}
+
+export async function preparePagePicker(
+  sidePanelTabId?: number,
+  chromeApi: typeof chrome = chrome,
+): Promise<PreparePagePickerResponse> {
+  const resolved = await resolvePickerTab(sidePanelTabId, chromeApi);
+  if (!resolved.ok) {
+    return { ok: false, error: noContextMessage };
+  }
+  const { tab } = resolved;
+  if (tab.id === undefined) return { ok: false, error: noContextMessage };
+
+  let pageUrl = resolved.url ?? tab.url;
+  let classification = classifyPage(pageUrl, tab, chromeApi);
+  if (classification?.kind === 'restricted') {
+    return { ok: false, error: classification.error };
+  }
+  if (classification?.kind === 'fixture') {
+    return { ok: true, tabId: tab.id, isFixture: true, url: classification.url.href };
   }
 
-  // The toolbar click normally grants activeTab access. Try that low-friction path first.
+  // A missing URL is not proof that activeTab is unavailable. Try the exact tab first.
   try {
-    await chromeApi.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content.js'],
-    });
-    return { ok: true, tabId: tab.id, isFixture: false };
+    await injectContentScript(tab.id, chromeApi);
+    const pageInfo = await getInjectedPageInfo(tab.id, chromeApi);
+    pageUrl = pageUrl ?? (pageInfo?.ok ? pageInfo.url : undefined);
+    classification = classifyPage(pageUrl, tab, chromeApi);
+    if (classification?.kind === 'restricted') {
+      return { ok: false, error: classification.error };
+    }
+    return {
+      ok: true,
+      tabId: tab.id,
+      isFixture: classification?.kind === 'fixture',
+      ...(pageUrl ? { url: pageUrl } : {}),
+    };
   } catch {
-    const originPattern = `${url.origin}/*`;
+    pageUrl = pageUrl ?? (await getTabUrl(tab.id, chromeApi));
+    classification = classifyPage(pageUrl, tab, chromeApi);
+    if (classification?.kind === 'restricted') {
+      return { ok: false, error: classification.error };
+    }
+    if (classification?.kind !== 'web') {
+      return { ok: false, error: noContextMessage };
+    }
+    if (resolved.source === 'active-tab') {
+      return { ok: false, error: noContextMessage };
+    }
+
+    const originPattern = `${classification.url.origin}/*`;
     let alreadyAllowed = false;
     try {
       alreadyAllowed = await chromeApi.permissions.contains({ origins: [originPattern] });
@@ -94,24 +148,20 @@ export async function preparePagePicker(
       } catch {
         granted = false;
       }
-      if (!granted) {
-        return {
-          ok: false,
-          error: `Site access was declined. To pick a product, allow Virtual Try-On to read ${url.hostname}, or use a local image.`,
-        };
-      }
+      if (!granted) return { ok: false, error: permissionDeniedMessage };
     }
+
     try {
-      await chromeApi.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js'],
-      });
-      return { ok: true, tabId: tab.id, isFixture: false };
-    } catch {
+      await injectContentScript(tab.id, chromeApi);
+      const pageInfo = await getInjectedPageInfo(tab.id, chromeApi);
       return {
-        ok: false,
-        error: `Chrome allowed access to ${url.hostname}, but the picker could not start. Refresh the product page and retry.`,
+        ok: true,
+        tabId: tab.id,
+        isFixture: false,
+        url: pageInfo?.ok ? pageInfo.url : classification.url.href,
       };
+    } catch {
+      return { ok: false, error: injectionFailedMessage };
     }
   }
 }
@@ -124,9 +174,6 @@ export async function activatePagePicker(
     await chromeApi.tabs.sendMessage(tabId, { type: 'OPEN_PICKER' });
     return { ok: true };
   } catch {
-    return {
-      ok: false,
-      error: 'The product picker could not connect to this page. Refresh the tab and try again.',
-    };
+    return { ok: false, error: injectionFailedMessage };
   }
 }

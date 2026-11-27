@@ -13,6 +13,10 @@ if (!window.__virtualTryOnContentReady) {
   chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     const parsed = extensionMessageSchema.safeParse(raw);
     if (!parsed.success) return;
+    if (parsed.data.type === 'GET_PAGE_CONTEXT') {
+      sendResponse({ ok: true, url: location.href, title: document.title });
+      return;
+    }
     if (parsed.data.type === 'GET_CONTEXT_IMAGE_DETAILS') {
       sendResponse(getPageImageDetails(document, parsed.data.src));
       return;

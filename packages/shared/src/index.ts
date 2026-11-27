@@ -107,6 +107,7 @@ export type PickerCapture = z.infer<typeof pickerCaptureSchema>;
 export const extensionMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('OPEN_PICKER') }),
   z.object({ type: z.literal('START_PAGE_PICKER'), tabId: z.number().int().positive() }),
+  z.object({ type: z.literal('GET_PAGE_CONTEXT') }),
   z.object({ type: z.literal('GET_CONTEXT_IMAGE_DETAILS'), src: z.string().min(1).max(4096) }),
   z.object({ type: z.literal('PICKER_CANCELLED') }),
   z.object({
