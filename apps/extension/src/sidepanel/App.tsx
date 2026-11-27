@@ -319,8 +319,31 @@ export function App() {
   const selectFromPage = async () => {
     setNotice('');
     try {
+      // Primary: tabId encoded in the side-panel URL by background.ts when the toolbar was clicked.
       const rawTabId = new URLSearchParams(window.location.search).get('tabId');
-      const panelTabId = rawTabId && /^\d+$/.test(rawTabId) ? Number(rawTabId) : undefined;
+      let panelTabId = rawTabId && /^\d+$/.test(rawTabId) ? Number(rawTabId) : undefined;
+
+      // Fallback: read the saved toolbar context from session storage.
+      // This handles the case where the side panel opened before setOptions took effect.
+      if (panelTabId === undefined) {
+        try {
+          const win = await chrome.windows.getCurrent();
+          if (win.id !== undefined) {
+            const stored = await chrome.storage.session.get('pickerToolbarContexts');
+            const ctxMap = stored['pickerToolbarContexts'];
+            if (ctxMap && typeof ctxMap === 'object') {
+              const ctx = (ctxMap as Record<string, { tabId: number; timestamp: number }>)[String(win.id)];
+              if (ctx?.tabId && Date.now() - ctx.timestamp < 30 * 60 * 1000) {
+                panelTabId = ctx.tabId;
+              }
+            }
+          }
+        } catch {
+          // Storage read failed; proceed without panelTabId.
+        }
+      }
+
+      console.log('[VTO] selectFromPage panelTabId:', panelTabId, 'url:', window.location.search);
       const prepared = await preparePagePicker(panelTabId);
       if (!prepared.ok) {
         setNotice(prepared.error);
