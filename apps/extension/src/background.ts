@@ -8,7 +8,7 @@ import { getSettings } from './lib/settings';
 import { saveImage } from './lib/storage';
 import { activatePagePicker } from './lib/page-picker';
 import {
-  openPickerSidePanelForTab,
+  savePickerToolbarContext,
   removePickerToolbarContextForTab,
   updatePickerToolbarContextUrl,
 } from './lib/picker-tab-context';
@@ -57,9 +57,21 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.action.onClicked.addListener((tab) => {
-  void openPickerSidePanelForTab(tab).catch((err: unknown) => {
-    console.error('[VTO] Failed to open side panel:', err);
+  if (tab.id === undefined || tab.windowId === undefined) return;
+  // setOptions path before open — Chrome API calls are FIFO so no await needed.
+  void chrome.sidePanel.setOptions({
+    tabId: tab.id,
+    path: `sidepanel.html?tabId=${tab.id}`,
+    enabled: true,
   });
+  // open() MUST be called without any preceding await to satisfy Chrome's
+  // user-gesture requirement. Fall back to windowId if tabId variant fails.
+  void chrome.sidePanel
+    .open({ tabId: tab.id })
+    .catch(() => chrome.sidePanel.open({ windowId: tab.windowId! }))
+    .catch((err: unknown) => console.error('[VTO] Failed to open side panel:', err));
+  // Save toolbar context so the side panel knows which shopping tab to target.
+  void savePickerToolbarContext(tab).catch(() => undefined);
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -76,8 +88,18 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === BATCH_ALARM) void runBatchSafely();
 });
 
-async function openPanel(tab?: chrome.tabs.Tab) {
-  if (tab) await openPickerSidePanelForTab(tab);
+function openPanel(tab?: chrome.tabs.Tab): void {
+  if (!tab || tab.id === undefined || tab.windowId === undefined) return;
+  void chrome.sidePanel.setOptions({
+    tabId: tab.id,
+    path: `sidepanel.html?tabId=${tab.id}`,
+    enabled: true,
+  });
+  void chrome.sidePanel
+    .open({ tabId: tab.id })
+    .catch(() => chrome.sidePanel.open({ windowId: tab.windowId! }))
+    .catch(() => undefined);
+  void savePickerToolbarContext(tab).catch(() => undefined);
 }
 
 async function storeRemoteGarment(
@@ -139,7 +161,7 @@ async function storeRemoteGarment(
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== MENU_ID || !info.srcUrl) return;
-  await openPanel(tab);
+  openPanel(tab); // synchronous — must not await before sidePanel.open()
   let details:
     | {
         ok: true;
