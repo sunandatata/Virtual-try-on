@@ -57,7 +57,9 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.action.onClicked.addListener((tab) => {
-  void openPickerSidePanelForTab(tab).catch(() => undefined);
+  void openPickerSidePanelForTab(tab).catch((err: unknown) => {
+    console.error('[VTO] Failed to open side panel:', err);
+  });
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {

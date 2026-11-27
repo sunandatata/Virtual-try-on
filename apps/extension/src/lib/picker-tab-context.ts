@@ -88,8 +88,14 @@ export async function openPickerSidePanelForTab(
   await chromeApi.sidePanel.setOptions({
     tabId: tab.id,
     path: `sidepanel.html?tabId=${tab.id}`,
+    enabled: true,
   });
-  await chromeApi.sidePanel.open({ tabId: tab.id });
+  // Try tab-specific open first; fall back to window-level open (Chrome <116 or restricted pages).
+  try {
+    await chromeApi.sidePanel.open({ tabId: tab.id });
+  } catch {
+    await chromeApi.sidePanel.open({ windowId: tab.windowId });
+  }
   await contextSaved;
   return true;
 }

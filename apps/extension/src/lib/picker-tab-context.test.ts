@@ -45,6 +45,7 @@ describe('picker toolbar tab context', () => {
     expect(sidePanel.setOptions).toHaveBeenLastCalledWith({
       tabId: 11,
       path: 'sidepanel.html?tabId=11',
+      enabled: true,
     });
     expect(sidePanel.open).toHaveBeenLastCalledWith({ tabId: 11 });
     expect(stored[PICKER_CONTEXT_KEY]).toEqual({
