@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { classifyProduct } from './product-classifier';
 import type { ProductMetadata } from '@virtual-try-on/shared';
 
-function meta(productName: string, hostname = 'shop.example.com'): Pick<ProductMetadata, 'productName' | 'color' | 'store' | 'hostname'> {
+function meta(
+  productName: string,
+  hostname = 'shop.example.com',
+): Pick<ProductMetadata, 'productName' | 'color' | 'store' | 'hostname'> {
   return {
     productName: { value: productName, source: 'page-title', confidence: 'high' },
     store: { value: 'Example Store', source: 'hostname', confidence: 'high' },

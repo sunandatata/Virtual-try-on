@@ -1,4 +1,9 @@
-import type { BeautyProviderJob, BeautyProviderSubmission, BeautyTryOnProvider, ProviderStatus } from './types';
+import type {
+  BeautyProviderJob,
+  BeautyProviderSubmission,
+  BeautyTryOnProvider,
+  ProviderStatus,
+} from './types';
 
 /**
  * Mock beauty try-on provider.
@@ -18,7 +23,12 @@ import type { BeautyProviderJob, BeautyProviderSubmission, BeautyTryOnProvider, 
 export class MockBeautyTryOnProvider implements BeautyTryOnProvider {
   async submit(input: BeautyProviderSubmission): Promise<BeautyProviderJob> {
     const readyAt = Date.now() + (process.env.NODE_ENV === 'test' ? 5 : 1600);
-    return { provider: 'beauty-mock', jobId: 'beauty-demo', readyAt, fail: input.controlledFailure };
+    return {
+      provider: 'beauty-mock',
+      jobId: 'beauty-demo',
+      readyAt,
+      fail: input.controlledFailure,
+    };
   }
 
   async status(

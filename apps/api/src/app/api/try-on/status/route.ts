@@ -25,7 +25,10 @@ export async function GET(request: Request) {
     let status;
     if (payload.kind === 'beauty-mock') {
       const beautyProvider = new MockBeautyTryOnProvider();
-      status = await beautyProvider.status('beauty-demo', { readyAt: payload.readyAt, fail: payload.fail });
+      status = await beautyProvider.status('beauty-demo', {
+        readyAt: payload.readyAt,
+        fail: payload.fail,
+      });
     } else {
       const provider = payload.kind === 'mock' ? new MockTryOnProvider() : new FashnTryOnProvider();
       status = await provider.status(

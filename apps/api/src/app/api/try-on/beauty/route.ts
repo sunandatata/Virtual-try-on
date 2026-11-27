@@ -28,20 +28,38 @@ export async function POST(request: Request) {
   try {
     const limit = await rateLimiter().check(client);
     if (!limit.allowed) {
-      return apiError('RATE_LIMITED', 'Too many try-on requests. Please wait a minute.', 429, true, {
-        ...cors,
-        'Retry-After': String(limit.retryAfter),
-      });
+      return apiError(
+        'RATE_LIMITED',
+        'Too many try-on requests. Please wait a minute.',
+        429,
+        true,
+        {
+          ...cors,
+          'Retry-After': String(limit.retryAfter),
+        },
+      );
     }
   } catch {
-    return apiError('INTERNAL_ERROR', 'Request protection is temporarily unavailable.', 503, true, cors);
+    return apiError(
+      'INTERNAL_ERROR',
+      'Request protection is temporarily unavailable.',
+      503,
+      true,
+      cors,
+    );
   }
 
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return apiError('BAD_REQUEST', 'Send face and product images as multipart form data.', 400, false, cors);
+    return apiError(
+      'BAD_REQUEST',
+      'Send face and product images as multipart form data.',
+      400,
+      false,
+      cors,
+    );
   }
 
   const beautyCategory = beautyCategorySchema.safeParse(form.get('beautyCategory'));
@@ -50,7 +68,13 @@ export async function POST(request: Request) {
 
   const shadeHex = shadeHexSchema.safeParse(form.get('shadeHex') ?? undefined);
   if (!shadeHex.success)
-    return apiError('BAD_REQUEST', 'shadeHex must be a 6-digit hex colour such as #e91e63.', 400, false, cors);
+    return apiError(
+      'BAD_REQUEST',
+      'shadeHex must be a 6-digit hex colour such as #e91e63.',
+      400,
+      false,
+      cors,
+    );
 
   try {
     const [face, product] = await Promise.all([

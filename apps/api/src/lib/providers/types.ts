@@ -23,8 +23,12 @@ export interface TryOnProvider {
 
 // Beauty try-on provider
 
-export type BeautyProviderJob =
-  | { provider: 'beauty-mock'; jobId: string; readyAt: number; fail: boolean };
+export type BeautyProviderJob = {
+  provider: 'beauty-mock';
+  jobId: string;
+  readyAt: number;
+  fail: boolean;
+};
 
 export type BeautyProviderSubmission = {
   /** Base64 data URI of the face photo */

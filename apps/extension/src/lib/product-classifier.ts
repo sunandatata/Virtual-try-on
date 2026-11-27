@@ -22,20 +22,43 @@ const BEAUTY_KEYWORDS: Array<{ pattern: RegExp; category: BeautyCategory }> = [
 ];
 
 const ACCESSORY_KEYWORDS: Array<{ pattern: RegExp; category: AccessoryCategory }> = [
-  { pattern: /\bshoes?\b|\bsneakers?\b|\bboots?\b|\bheels?\b|\bsandals?\b|\bflats?\b/i, category: 'shoes' },
+  {
+    pattern: /\bshoes?\b|\bsneakers?\b|\bboots?\b|\bheels?\b|\bsandals?\b|\bflats?\b/i,
+    category: 'shoes',
+  },
   { pattern: /\bhats?\b|\bcaps?\b|\bbeanie\b|\bfedora\b|\btoque\b/i, category: 'hat' },
   { pattern: /\bbags?\b|\bhandbag\b|\bpurse\b|\btote\b|\bclutch\b|\bbackpack\b/i, category: 'bag' },
   { pattern: /\bnecklace\b|\bchain\b|\bpendant\b/i, category: 'necklace' },
   { pattern: /\bearrings?\b|\bstud\b|\bhoop\b/i, category: 'earrings' },
-  { pattern: /\bjewel(?:r?y|ler?y)\b|\bbracelet\b|\bwatch\b|\bring\b|\bbrooch\b/i, category: 'accessory' },
+  {
+    pattern: /\bjewel(?:r?y|ler?y)\b|\bbracelet\b|\bwatch\b|\bring\b|\bbrooch\b/i,
+    category: 'accessory',
+  },
 ];
 
 const APPAREL_KEYWORDS: Array<{ pattern: RegExp; category: ApparelCategory }> = [
-  { pattern: /\bdress(?:es)?\b|\bgown\b|\bfrock\b|\bmaxi\b|\bjumpsuit\b|\boverall\b|\bromper\b/i, category: 'dress' },
-  { pattern: /\bt-?shirt\b|\btop\b|\bblouse\b|\btank\b|\btunic\b|\bcamisole\b|\bcrop\b|\bsweater\b|\bpullover\b|\bknitwear\b/i, category: 'top' },
-  { pattern: /\bpants?\b|\bjeans?\b|\btrousers?\b|\bskirt\b|\bshorts?\b|\bleggings?\b|\bcargos?\b|\bchinos?\b/i, category: 'bottom' },
-  { pattern: /\bjacket\b|\bcoat\b|\bparka\b|\bblazer\b|\bovercoat\b|\btrench\b|\bwindbreaker\b/i, category: 'outerwear' },
-  { pattern: /\boutfit\b|\bsuit\b|\bco-?ord\b|\bset\b.*(?:top|bottom|dress)/i, category: 'full-outfit' },
+  {
+    pattern: /\bdress(?:es)?\b|\bgown\b|\bfrock\b|\bmaxi\b|\bjumpsuit\b|\boverall\b|\bromper\b/i,
+    category: 'dress',
+  },
+  {
+    pattern:
+      /\bt-?shirt\b|\btop\b|\bblouse\b|\btank\b|\btunic\b|\bcamisole\b|\bcrop\b|\bsweater\b|\bpullover\b|\bknitwear\b/i,
+    category: 'top',
+  },
+  {
+    pattern:
+      /\bpants?\b|\bjeans?\b|\btrousers?\b|\bskirt\b|\bshorts?\b|\bleggings?\b|\bcargos?\b|\bchinos?\b/i,
+    category: 'bottom',
+  },
+  {
+    pattern: /\bjacket\b|\bcoat\b|\bparka\b|\bblazer\b|\bovercoat\b|\btrench\b|\bwindbreaker\b/i,
+    category: 'outerwear',
+  },
+  {
+    pattern: /\boutfit\b|\bsuit\b|\bco-?ord\b|\bset\b.*(?:top|bottom|dress)/i,
+    category: 'full-outfit',
+  },
 ];
 
 const UNSUPPORTED_PATTERNS: RegExp[] = [
@@ -67,29 +90,51 @@ function scoreText(text: string): Hit[] {
 
   for (const { pattern, category } of BEAUTY_KEYWORDS) {
     if (pattern.test(text)) {
-      hits.push({ group: 'beauty', category, evidence: `keyword match: "${text.match(pattern)?.[0]}"`, score: 3 });
+      hits.push({
+        group: 'beauty',
+        category,
+        evidence: `keyword match: "${text.match(pattern)?.[0]}"`,
+        score: 3,
+      });
     }
   }
   for (const { pattern, category } of ACCESSORY_KEYWORDS) {
     if (pattern.test(text)) {
-      hits.push({ group: 'accessory', category, evidence: `keyword match: "${text.match(pattern)?.[0]}"`, score: 2 });
+      hits.push({
+        group: 'accessory',
+        category,
+        evidence: `keyword match: "${text.match(pattern)?.[0]}"`,
+        score: 2,
+      });
     }
   }
   for (const { pattern, category } of APPAREL_KEYWORDS) {
     if (pattern.test(text)) {
-      hits.push({ group: 'apparel', category, evidence: `keyword match: "${text.match(pattern)?.[0]}"`, score: 2 });
+      hits.push({
+        group: 'apparel',
+        category,
+        evidence: `keyword match: "${text.match(pattern)?.[0]}"`,
+        score: 2,
+      });
     }
   }
   for (const pattern of UNSUPPORTED_PATTERNS) {
     if (pattern.test(text)) {
-      hits.push({ group: 'unsupported', category: null, evidence: `unsupported keyword: "${text.match(pattern)?.[0]}"`, score: 3 });
+      hits.push({
+        group: 'unsupported',
+        category: null,
+        evidence: `unsupported keyword: "${text.match(pattern)?.[0]}"`,
+        score: 3,
+      });
     }
   }
 
   return hits;
 }
 
-export function classifyProduct(metadata: Pick<ProductMetadata, 'productName' | 'color' | 'store' | 'hostname'>): ProductClassification {
+export function classifyProduct(
+  metadata: Pick<ProductMetadata, 'productName' | 'color' | 'store' | 'hostname'>,
+): ProductClassification {
   const allHits: Hit[] = [];
   const textSources: Array<{ text: string; weight: number }> = [];
 
@@ -111,11 +156,21 @@ export function classifyProduct(metadata: Pick<ProductMetadata, 'productName' | 
 
   // Hostname/store boosts
   if (BEAUTY_STORES.some((re) => re.test(metadata.hostname))) {
-    allHits.push({ group: 'beauty', category: null, evidence: `beauty retailer: ${metadata.hostname}`, score: 1 });
+    allHits.push({
+      group: 'beauty',
+      category: null,
+      evidence: `beauty retailer: ${metadata.hostname}`,
+      score: 1,
+    });
   }
 
   if (allHits.length === 0) {
-    return { group: 'apparel', category: 'dress', confidence: 'low', evidence: ['no matching keywords; defaulting to apparel'] };
+    return {
+      group: 'apparel',
+      category: 'dress',
+      confidence: 'low',
+      evidence: ['no matching keywords; defaulting to apparel'],
+    };
   }
 
   // Tally by group
@@ -153,7 +208,8 @@ export function classifyProduct(metadata: Pick<ProductMetadata, 'productName' | 
   // Confidence: high if top group score >= 6, medium >= 3, else low
   const totalScore = [...groupScores.values()].reduce((a, b) => a + b, 0);
   const ratio = totalScore > 0 ? topScore / totalScore : 0;
-  const confidence = topScore >= 6 || ratio >= 0.9 ? 'high' : topScore >= 3 || ratio >= 0.6 ? 'medium' : 'low';
+  const confidence =
+    topScore >= 6 || ratio >= 0.9 ? 'high' : topScore >= 3 || ratio >= 0.6 ? 'medium' : 'low';
 
   const evidence = groupHits.slice(0, 5).map((h) => h.evidence);
 

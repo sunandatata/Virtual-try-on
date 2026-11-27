@@ -260,7 +260,11 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
   const [color, setColor] = useState(draft.color ?? '');
   const [classification] = useState<ProductClassification | null>(() => {
     if (!draft.metadata) return null;
-    try { return classifyProduct(draft.metadata); } catch { return null; }
+    try {
+      return classifyProduct(draft.metadata);
+    } catch {
+      return null;
+    }
   });
   const [category, setCategory] = useState<GarmentCategory | ''>(() => {
     if (draft.category) return draft.category;
@@ -388,9 +392,7 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
           <span className={`confidence confidence-${classification.confidence}`}>
             {classification.confidence} confidence
           </span>
-          {classification.evidence[0] && (
-            <small>Evidence: {classification.evidence[0]}</small>
-          )}
+          {classification.evidence[0] && <small>Evidence: {classification.evidence[0]}</small>}
           {classificationNotice(classification) && (
             <p className="notice">{classificationNotice(classification)}</p>
           )}
@@ -433,7 +435,9 @@ function DraftReview({ draft, onSaved }: { draft: CaptureDraft; onSaved: () => v
         <div className="button-row">
           <button
             className="button primary"
-            disabled={saving || !productName.trim() || !store.trim() || (!category && !isNonApparel)}
+            disabled={
+              saving || !productName.trim() || !store.trim() || (!category && !isNonApparel)
+            }
             onClick={() => void reviewDuplicates()}
           >
             {saving ? 'Saving…' : 'Add to queue'}

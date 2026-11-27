@@ -30,7 +30,7 @@ export async function getDefaultBodyProfile(): Promise<BodyProfile | undefined> 
 }
 
 export async function listBodyProfilesByType(type: ProfileType): Promise<BodyProfile[]> {
-  return (await (await openDatabase()).getAllFromIndex('bodyProfiles', 'by-profile-type', type));
+  return await (await openDatabase()).getAllFromIndex('bodyProfiles', 'by-profile-type', type);
 }
 
 export async function getDefaultFaceProfile(): Promise<BodyProfile | undefined> {
